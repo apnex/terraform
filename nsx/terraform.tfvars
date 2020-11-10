@@ -6,7 +6,6 @@ vsphere_server		= "vcenter.lab"
 ### vsphere deployment parameters
 datacenter	= "mel"
 cluster		= "cmp"
-pool		= "cmp/Resources"
 datastore	= "ds-esx09"
 host		= "sddc.lab"
 dvs		= "fabric"

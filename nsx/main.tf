@@ -7,10 +7,9 @@ provider "vsphere" {
 }
 
 module "nsx-manager" {
-	source		= "./manager"
+	source		= "github.com/apnex/module-nsx-manager"
 	datacenter	= var.datacenter
 	cluster		= var.cluster
-	pool		= var.pool
 	datastore	= var.datastore
 	host		= var.host
 	dvs		= "fabric"
