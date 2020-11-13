@@ -1,20 +1,15 @@
-variable "vsphere_server" {
-  type        = string
-  description = "vCenter or ESXi host"
+provider "vsphere" {
+	#version		= "~> 1.23.0"
+	vsphere_server		= "vcenter.lab01"
+	user			= "administrator@vsphere.local"
+	password		= "VMware1!SDDC"
+	allow_unverified_ssl	= true
 }
-variable "vsphere_user" {
-  type        = string
-  description = "User with permissions to create VM"
-}
-variable "vsphere_password" {
-  type        = string
-  description = "Defined user password"
-}
-variable "esxi_hosts" {
-  default = [
-    "esxi41.rubrik.us",
-    "esxi42.rubrik.us",
-    "esxi43.rubrik.us",
-    "esxi44.rubrik.us"
-  ]
+
+variable "nodes" {
+	default = [
+		"esx11.lab01",
+		"esx12.lab01",
+		"esx13.lab01"
+	]
 }

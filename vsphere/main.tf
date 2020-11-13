@@ -1,5 +1,5 @@
+#	version			= "~> 1.23.0" # errors with > 1.24
 provider "vsphere" {
-	version			= "~> 1.23.0" # errors with > 1.24
 	vsphere_server		= "vcenter.lab01"
 	user			= "administrator@vsphere.local"
 	password		= "VMware1!SDDC"
@@ -23,10 +23,17 @@ locals {
 	]
 }
 
+data "vsphere_host_thumbprint" "thumbprint" {
+	for_each = toset(local.nodes)
+	address = each.key
+	insecure = true
+}
+
 resource "vsphere_host" "hosts" {
 	for_each = toset(local.nodes)
 	hostname = each.key
 	username = "root"
 	password = "VMware1!SDDC"
+	thumbprint = data.vsphere_host_thumbprint.thumbprint[each.key].id
 	cluster  = data.vsphere_compute_cluster.cmp.id
 }
