@@ -12,3 +12,7 @@ data "vsphere_distributed_virtual_switch" "dvs" {
 	name		= "fabric"
 	datacenter_id	= data.vsphere_datacenter.datacenter.id
 }
+
+#module "port-groups" {
+#	source = "../vds"
+#}
