@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## install unzip
+yum -y install unzip
+
 ## install terraform
 TFVER=$(curl -s https://api.github.com/repos/hashicorp/terraform/releases/latest | jq -r '.tag_name' | cut -c 2-)
 wget https://releases.hashicorp.com/terraform/${TFVER}/terraform_${TFVER}_linux_amd64.zip

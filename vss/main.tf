@@ -1,4 +1,3 @@
-	#version			= "~> 1.23.0" # errors with > 1.24
 provider "vsphere" {
 	vsphere_server		= "vcenter.lab01"
 	user			= "administrator@vsphere.local"

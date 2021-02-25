@@ -11,7 +11,7 @@ data "vsphere_host" "host" {
 resource "vsphere_distributed_virtual_switch" "dvs" {
 	name		= "fabric"
 	datacenter_id	= data.vsphere_datacenter.datacenter.id
-	uplinks		= ["uplink2"]
+	uplinks		= ["uplink1","uplink2"]
 	active_uplinks	= ["uplink2"]
 	standby_uplinks	= []
 	max_mtu		= 9000
