@@ -1,7 +1,6 @@
 variable "vsphere_user" {}
 variable "vsphere_password" {}
 variable "vsphere_server" {}
-
 terraform {
 	backend "local" {
 		path = "./terraform.tfstate"
@@ -18,11 +17,27 @@ provider "vsphere" {
 	allow_unverified_ssl = true
 }
 
-variable "nodes" {
-	type = map
+variable "datastore" {
+	default = "ds-esx04"
+}
+
+variable "vmw" {
 	default = {
-		"onprem-web01"	= 1,
-		"onprem-web02"	= 1,
-		"onprem-web03"	= 1
+		network = "pg-trunk"
+		datastore = "ds-esx04"
+		nodes = [
+			{
+				name = "esx21"
+			},
+			{
+				name = "esx22"
+			},
+			{
+				name = "esx23"
+			},
+			{
+				name = "esx24"
+			}
+		]
 	}
 }
