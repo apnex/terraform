@@ -66,7 +66,7 @@ resource "null_resource" "pull-file" {
 resource "vsphere_file" "push-file" {
 	datacenter       = "core"
 	datastore        = var.vmw.datastore
-	source_file      = "./${local.lab}-${var.vmw.bootfile_name}"
+	source_file      = "${path.module}/${local.lab}-${var.vmw.bootfile_name}"
 	destination_file = "iso/${local.lab}-${var.vmw.bootfile_name}"
 	depends_on = [
 		null_resource.pull-file

@@ -23,7 +23,7 @@ resource "null_resource" "dns-service" {
 		inline	= [<<EOF
 			kubectl apply -f https://labops.sh/dns/terraform-dns.yaml
 			while [[ $(kubectl get pods control-dns -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
-			        echo "waiting for pod" && sleep 1;
+			        echo "waiting for pod" && sleep 3;
 			done
 			kubectl get pods -A
 			sleep 10 # wait for bind to start
