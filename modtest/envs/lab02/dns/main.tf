@@ -1,3 +1,9 @@
+# install dns-service
+module "dns-service" {
+	source = "../../../modules/dns-service"
+	master_ip = local.master_ip
+}
+
 # rndc provider
 provider "dns" {
 	update {
@@ -26,7 +32,7 @@ resource "dns_a_record_set" "fwd-record" {
 	addresses	= [ local.data.records[count.index].addr ]
 	ttl		= 86400
 	depends_on	= [
-		null_resource.dns-service
+		module.dns-service
 	]
 }
 
@@ -38,46 +44,6 @@ resource "dns_ptr_record" "rev-record" {
 	ptr		= "${local.data.records[count.index].name}.${local.data.zone}"
 	ttl		= 86400
 	depends_on	= [
-		null_resource.dns-service
+		module.dns-service
 	]
-}
-
-# external md5
-data "external" "trigger" {
-	program = ["/bin/bash", "-c", <<EOF
-		CHECKSUM=$(curl -L https://labops.sh/dns/terraform-dns.yaml | md5sum | awk '{ print $1 }')
-		jq -n --arg checksum "$CHECKSUM" '{"checksum":$checksum}'
-	EOF
-	]
-}
-
-# dns-service
-resource "null_resource" "dns-service" {
-	triggers = {
-		md5		= data.external.trigger.result["checksum"]
-		master_ip	= local.master_ip
-	}
-	connection {
-		type		= "ssh"
-		user		= "root"
-		password	= "VMware1!"
-		host		= self.triggers.master_ip
-	}
-	provisioner "remote-exec" {
-		inline	= [<<EOF
-			kubectl apply -f https://labops.sh/dns/terraform-dns.yaml
-			while [[ $(kubectl get pods control-dns -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
-			        echo "waiting for pod" && sleep 1;
-			done
-			kubectl get pods -A
-			sleep 10 # wait for bind to start
-		EOF
-		]
-	}
-	provisioner "remote-exec" {
-		when = destroy
-		inline	= [
-			"kubectl delete -f https://labops.sh/dns/terraform-dns.yaml"
-		]
-	}
 }

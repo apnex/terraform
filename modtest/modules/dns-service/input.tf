@@ -1,0 +1,1 @@
+variable master_ip {}
