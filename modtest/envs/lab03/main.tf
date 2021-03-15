@@ -4,12 +4,13 @@ terraform {
 	}
 }
 
-module "newdc" {
-	source = "../../modules/datacenter"
-	name = "prod-dc-02"
+# create VAPP
+# create Control-Node
+module "controller" {
+	source = "../../modules/controller"
 
 	# vsphere provider details
-	vsphere_server	= "vcenter.lab03.syd"
-	user		= "administrator@vsphere.local"
-	password	= "VMware1!SDDC"
+	vsphere_server		= "vcenter.core.syd"
+	vsphere_user		= "administrator@vsphere.local"
+	vsphere_password	= "VMware1!SDDC"
 }

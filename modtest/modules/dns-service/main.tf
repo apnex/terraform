@@ -20,14 +20,14 @@ resource "null_resource" "dns-service" {
 		host		= self.triggers.master_ip
 	}
 	provisioner "remote-exec" {
-		inline	= [<<EOF
+		inline	= [<<-EOT
 			kubectl apply -f https://labops.sh/dns/terraform-dns.yaml
 			while [[ $(kubectl get pods control-dns -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
 			        echo "waiting for pod" && sleep 3;
 			done
 			kubectl get pods -A
 			sleep 10 # wait for bind to start
-		EOF
+		EOT
 		]
 	}
 	provisioner "remote-exec" {
