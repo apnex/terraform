@@ -1,44 +1,34 @@
 locals {
 	lab			= "lab0${var.vmw.lab_id}"	
+	bootfile_url		= var.vmw.controller.bootfile_url
+	bootfile_name		= "${local.lab}-${var.vmw.controller.bootfile_name}"
 }
 
 data "vsphere_datacenter" "datacenter" {
-	name			= "core"
-}
-
-data "vsphere_compute_cluster" "cluster" {
-	name			= "cmp"
-	datacenter_id		= data.vsphere_datacenter.datacenter.id
+	name			= var.vmw.datacenter
 }
 
 data "vsphere_network" "network" {
-	name			= var.vmw.network
+	name			= var.vmw.controller.network
 	datacenter_id		= data.vsphere_datacenter.datacenter.id
 }
 
 data "vsphere_datastore" "datastore" {
-	name			= var.vmw.datastore
+	name			= var.vmw.controller.datastore
 	datacenter_id		= data.vsphere_datacenter.datacenter.id
 }
 
-resource "vsphere_vapp_container" "lab" {
+data "vsphere_vapp_container" "lab" {
 	name			= local.lab
-	parent_resource_pool_id	= data.vsphere_compute_cluster.cluster.resource_pool_id
-	lifecycle {
-		ignore_changes = [
-			parent_folder_id
-		]
-	}
+	datacenter_id		= data.vsphere_datacenter.datacenter.id
 }
 
 # pull file - turn into docker resource?
 resource "null_resource" "pull-file" {
 	triggers = {
-		#always_run	= timestamp()
-		#filexist	= fileexists("./${local.lab}-${var.vmw.bootfile_name}") ? filemd5("./${local.lab}-${var.vmw.bootfile_name}") : ""
-		exists		= fileexists("${path.module}/${local.lab}-${var.vmw.bootfile_name}")
-		pullfilename	= "${path.module}/${local.lab}-${var.vmw.bootfile_name}"
-		pullfileurl	= var.vmw.bootfile_url
+		exists		= fileexists("${path.root}/${local.bootfile_name}")
+		pullfilename	= "${path.root}/${local.bootfile_name}"
+		pullfileurl	= local.bootfile_url
 		lab		= local.lab
 	}
 	provisioner "local-exec" {
@@ -64,10 +54,10 @@ resource "null_resource" "pull-file" {
 
 # upload file
 resource "vsphere_file" "push-file" {
-	datacenter       = "core"
-	datastore        = var.vmw.datastore
-	source_file      = "${path.module}/${local.lab}-${var.vmw.bootfile_name}"
-	destination_file = "iso/${local.lab}-${var.vmw.bootfile_name}"
+	datacenter       = var.vmw.datacenter
+	datastore        = var.vmw.controller.datastore
+	source_file      = "${path.root}/${local.bootfile_name}"
+	destination_file = "iso/${local.bootfile_name}"
 	depends_on = [
 		null_resource.pull-file
 	]
@@ -75,9 +65,9 @@ resource "vsphere_file" "push-file" {
 
 resource "vsphere_virtual_machine" "vm" {
 	name				= "${var.vmw.controller.name}.${local.lab}"
-	resource_pool_id		= vsphere_vapp_container.lab.id
+	resource_pool_id		= data.vsphere_vapp_container.lab.id
 	datastore_id			= data.vsphere_datastore.datastore.id
-	wait_for_guest_net_timeout	= 20 # minutes
+	wait_for_guest_net_timeout	= 40 # minutes
 	depends_on = [
 		vsphere_file.push-file
 	]
@@ -87,7 +77,7 @@ resource "vsphere_virtual_machine" "vm" {
 		]
 	}
 
-	# connection
+	# connection/provisioner
 	connection {
 		host		= self.default_ip_address
 		type		= "ssh"
@@ -98,7 +88,7 @@ resource "vsphere_virtual_machine" "vm" {
 		inline = [<<-EOF
 			while [ ! -f /root/startup.done ]; do
 				sleep 3;
-				echo "Waiting for startup scripts.. "
+				echo "Waiting for runonce startup scripts.. "
 			done
 			hostnamectl set-hostname router
 			docker version
@@ -117,7 +107,7 @@ resource "vsphere_virtual_machine" "vm" {
 	# hardware
 	cdrom {
 		datastore_id		= data.vsphere_datastore.datastore.id
-		path			= "iso/${local.lab}-${var.vmw.bootfile_name}"
+		path			= "iso/${local.bootfile_name}"
 	}
 	disk {
 		label			= "disk0"

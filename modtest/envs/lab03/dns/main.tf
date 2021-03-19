@@ -2,6 +2,7 @@
 module "dns-service" {
 	source = "../../../modules/dns-service"
 	master_ip = local.master_ip
+	manifest = local.manifest
 }
 
 # rndc provider

@@ -1,7 +1,8 @@
 # external md5
 data "external" "trigger" {
 	program = ["/bin/bash", "-c", <<EOF
-		CHECKSUM=$(curl -L https://labops.sh/dns/terraform-dns.yaml | md5sum | awk '{ print $1 }')
+		#CHECKSUM=$(curl -L https://labops.sh/dns/terraform-dns.yaml | md5sum | awk '{ print $1 }')
+		CHECKSUM=$(cat /root/${var.manifest} | md5sum | awk '{ print $1 }')
 		jq -n --arg checksum "$CHECKSUM" '{"checksum":$checksum}'
 	EOF
 	]
@@ -12,6 +13,7 @@ resource "null_resource" "dns-service" {
 	triggers = {
 		md5		= data.external.trigger.result["checksum"]
 		master_ip	= var.master_ip
+		manifest	= var.manifest
 	}
 	connection {
 		type		= "ssh"
@@ -19,9 +21,13 @@ resource "null_resource" "dns-service" {
 		password	= "VMware1!"
 		host		= self.triggers.master_ip
 	}
+	provisioner "file" {
+		source      = "${path.root}/${self.triggers.manifest}"
+		destination = "/root/${self.triggers.manifest}"
+	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
-			kubectl apply -f https://labops.sh/dns/terraform-dns.yaml
+			kubectl apply -f "/root/${self.triggers.manifest}"
 			while [[ $(kubectl get pods control-dns -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]]; do
 			        echo "waiting for pod" && sleep 3;
 			done
@@ -33,7 +39,7 @@ resource "null_resource" "dns-service" {
 	provisioner "remote-exec" {
 		when = destroy
 		inline	= [
-			"kubectl delete -f https://labops.sh/dns/terraform-dns.yaml"
+			"kubectl delete -f /root/${self.triggers.manifest}"
 		]
 	}
 }

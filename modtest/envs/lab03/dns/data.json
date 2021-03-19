@@ -1,5 +1,6 @@
 {
 	"zone": "lab03.syd.",
+	"subnet": "10.30.0.0",
 	"records": [
 		{
 			"name": "vcenter",

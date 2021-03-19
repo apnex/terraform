@@ -13,6 +13,7 @@ data "terraform_remote_state" "stage0" {
 
 locals {
 	master_ip	= data.terraform_remote_state.stage0.outputs.controller_ip
+	manifest	= "lab03-dns.yaml"
 	data		= jsondecode(file("${path.module}/data.json"))
 }
 

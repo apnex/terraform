@@ -2,6 +2,7 @@
 module "dns-service" {
 	source = "../../../modules/dns-service"
 	master_ip = local.master_ip
+	manifest = local.manifest
 }
 
 # rndc provider
@@ -44,6 +45,7 @@ resource "dns_ptr_record" "rev-record" {
 	ptr		= "${local.data.records[count.index].name}.${local.data.zone}"
 	ttl		= 86400
 	depends_on	= [
-		module.dns-service
+		module.dns-service,
+		dns_a_record_set.fwd-record
 	]
 }

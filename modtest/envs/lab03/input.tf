@@ -6,10 +6,17 @@ provider "vsphere" {
 	allow_unverified_ssl	= true
 }
 
-variable "nodes" {
-	default = [
-		"esx11.lab01",
-		"esx12.lab01",
-		"esx13.lab01",
-	]
+variable "vmw" {
+	default = {
+		lab_id = 3
+		datacenter = "core"
+		cluster = "cmp"
+		controller = {
+			name = "router"
+			network = "pg-mgmt"
+			datastore = "ds-esx04"
+			bootfile_url = "http://labops.sh/library/labops.centos.stage2.iso"
+			bootfile_name = "labops.centos.stage2.iso"
+		}
+	}
 }
