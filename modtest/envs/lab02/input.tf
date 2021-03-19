@@ -1,5 +1,9 @@
+terraform {
+	required_providers {
+		vsphere = ">= 1.23.0"
+	}
+}
 provider "vsphere" {
-	version			= "> 1.23"
 	vsphere_server		= "vcenter.core.syd"
 	user			= "administrator@vsphere.local"
 	password		= "VMware1!SDDC"
