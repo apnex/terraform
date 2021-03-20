@@ -18,18 +18,18 @@
 		"appliance": {
 			"thin_disk_mode": true,
 			"deployment_option": "tiny",
-			"name": "vcenter.lab03.syd"
+			"name": "vcenter.lab02.syd"
 		},
 		"network": {
 			"ip_family": "ipv4",
 			"mode": "static",
-			"ip": "10.30.0.130",
+			"ip": "10.30.0.120",
 			"dns_servers": [
-				"10.30.0.63"
+				"10.30.0.81"
 			],
 			"prefix": "24",
 			"gateway": "10.30.0.254",
-			"system_name": "vcenter.lab03.syd"
+			"system_name": "vcenter.lab02.syd"
 		},
 		"os": {
 			"password": "VMware1!SDDC",

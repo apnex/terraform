@@ -19,8 +19,9 @@ function ccyan {
 }
 
 FILE=$1
-RUN=$2
-if [[ -n "${FILE}" ]]; then
+JSON=$2
+RUN=$3
+if [[ -n "${FILE}" && -n "${JSON}" ]]; then
 	## set vcsa directory name
 	BASEDIR="${PWD}"
 	VCSADIR="${PWD}/vcsa"
@@ -44,11 +45,11 @@ if [[ -n "${FILE}" ]]; then
 	mount -t iso9660 -o loop,ro $FILE $VCSADIR
 
 	if [[ "${RUN}" == "true" ]]; then
-		$VCSADIR/vcsa-cli-installer/lin64/vcsa-deploy install -v --no-ssl-certificate-verification $BASEDIR/vcsa.json --accept-eula
+		$VCSADIR/vcsa-cli-installer/lin64/vcsa-deploy install -v --no-ssl-certificate-verification ${JSON} --accept-eula
 	else
-		$VCSADIR/vcsa-cli-installer/lin64/vcsa-deploy install -v --no-ssl-certificate-verification $BASEDIR/vcsa.json --accept-eula --precheck-only
+		$VCSADIR/vcsa-cli-installer/lin64/vcsa-deploy install -v --no-ssl-certificate-verification ${JSON} --accept-eula --precheck-only
 	fi
 	#umount $vcsadir
 else
-	printf "[$(corange "ERROR")]: Usage: $(cgreen "vcenter.create") $(ccyan "<vcsa.iso> [ <true> ]")\n" 1>&2
+	printf "[$(corange "ERROR")]: Usage: $(cgreen "vcenter.create") $(ccyan "<vcsa.iso> <vcsa.json> [ <true> ]")\n" 1>&2
 fi

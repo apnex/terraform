@@ -1,51 +1,17 @@
 locals {
-	lab			= "lab0${var.vmw.lab_id}"	
+	prefix			= "lab0${var.vmw.lab_id}"	
+	vcenter_url		= var.vmw.vcenter_url
+	vcenter_file		= var.vmw.vcenter_file
+	vcenter_json		= var.vmw.vcenter_json
+	not_dry_run		= var.vmw.not_dry_run
 }
 
-# pull file
-resource "null_resource" "pull-file" {
-	triggers = {
-		always_run	= timestamp()
-		pullfilename	= "vcenter.iso"
-		pullfileurl	= var.vmw.files.vcenter
-		lab		= local.lab
-	}
-	provisioner "local-exec" {
-		interpreter = ["/bin/bash" ,"-c"]
-		command = <<-EOF
-			if [[ -f "${self.triggers.pullfilename}" ]]; then
-				echo "file EXISTS ${self.triggers.pullfilename}"
-			else
-				curl -Lo ./"${self.triggers.lab}-${self.triggers.pullfilename}" "${self.triggers.pullfileurl}"
-			fi
-		EOF
-	}
-	provisioner "local-exec" {
-		when    = destroy
-		command = <<-EOF
-			rm "${self.triggers.lab}-${self.triggers.pullfilename}"
-		EOF
-	}
-}
-
-# vcenter.create
-resource "null_resource" "vcenter-create" {
-	depends_on = [
-		null_resource.pull-file
-	]
-	triggers = {
-		always_run	= timestamp()
-		filename	= "${local.lab}-vcenter.iso"
-	}
-	provisioner "local-exec" {
-		interpreter = ["/bin/bash" ,"-c"]
-		command = <<-EOF
-			if [[ -f "${self.triggers.filename}" ]]; then
-				echo "file EXISTS ${self.triggers.filename}"
-				./vcenter.create.sh "${self.triggers.filename}" true
-			else
-				echo "file MISSING"
-			fi
-		EOF
-	}
+# install vcenter
+module "vcenter" {
+	source			= "../../../modules/vcenter"
+	prefix			= local.prefix
+	vcenter_url		= local.vcenter_url
+	vcenter_file		= local.vcenter_file
+	vcenter_json		= local.vcenter_json
+	not_dry_run		= local.not_dry_run
 }

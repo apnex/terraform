@@ -33,7 +33,8 @@ resource "null_resource" "dns-service" {
 			        echo "waiting for pod" && sleep 3;
 			done
 			kubectl get pods -A
-			sleep 10 # wait for bind to start
+			echo "waiting for BIND to start"
+			sleep 10
 		EOT
 		]
 	}
@@ -52,7 +53,6 @@ data "external" "service-ip" {
 			kubectl get services -o json | jq -r '.items[] | select(.metadata.name | contains("vip-control-dns-rndc")).status.loadBalancer.ingress[0].ip'
 		EOF
 		VALUE=$(ssh root@"${var.master_ip}" -i "${var.master_ssh_key}" -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS" | tr -d '\r')
-		#VALUE=$(sshpass -p 'VMware1!' ssh root@"${var.master_ip}" -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS" | tr -d '\r')
 		jq -n --arg value "$VALUE" '{"value":$value}'
 	EOT
 	]
