@@ -2,7 +2,9 @@ locals {
 	lab			= "lab0${var.vmw.lab_id}"	
 	bootfile_url		= var.vmw.controller.bootfile_url
 	bootfile_name		= "${local.lab}-${var.vmw.controller.bootfile_name}"
-	private_key		= var.vmw.controller.private_key
+	bootfile_path		= join("/", [abspath(path.root), "state/${local.bootfile_name}"])
+	private_key		= join("/", [abspath(path.root), "state/${local.lab}-${var.vmw.controller.private_key}"])
+	public_key		= "${local.private_key}.pub"
 }
 
 data "vsphere_datacenter" "datacenter" {
@@ -41,36 +43,35 @@ data "vsphere_vapp_container" "lab" {
 # pull file - turn into docker resource?
 resource "null_resource" "pull-file" {
 	triggers = {
-		exists		= fileexists("${path.root}/${local.bootfile_name}")
-		pullfilename	= "${path.root}/${local.bootfile_name}"
-		pullfileurl	= local.bootfile_url
-		lab		= local.lab
+		file_name	= local.bootfile_path
+		file_url	= local.bootfile_url
+		exists		= fileexists(local.bootfile_path)
 	}
 	provisioner "local-exec" {
 		interpreter = ["/bin/bash" ,"-c"]
-		command = <<-EOF
-			if [[ -f "${self.triggers.pullfilename}" ]]; then
-				echo "file EXISTS ${self.triggers.pullfilename}"
+		command = <<-EOT
+			if [[ -f "${self.triggers.file_name}" ]]; then
+				echo "file EXISTS ${self.triggers.file_name}"
 			else
-				echo "file NOT EXISTS ${self.triggers.pullfilename}"
-				curl -Lo "${self.triggers.pullfilename}" "${self.triggers.pullfileurl}"
+				echo "file NOT EXISTS ${self.triggers.file_name}"
+				curl -Lo "${self.triggers.file_name}" "${self.triggers.file_url}"
 			fi
-		EOF
+		EOT
 	}
 	provisioner "local-exec" {
 		when    = destroy
-		command = <<-EOF
-			if [[ -f "${self.triggers.pullfilename}" ]]; then
-				rm "${self.triggers.pullfilename}"
+		command = <<-EOT
+			if [[ -f "${self.triggers.file_name}" ]]; then
+				rm "${self.triggers.file_name}"
 			fi
-		EOF
+		EOT
 	}
 }
 
 # generate local sshkey
 resource "null_resource" "generate-sshkey" {
 	provisioner "local-exec" {
-		command = "yes y | ssh-keygen -b 4096 -t rsa -C 'root' -N '' -f ${var.vmw.controller.private_key}"
+		command = "yes y | ssh-keygen -b 4096 -t rsa -C 'root' -N '' -f ${local.private_key}"
 	}
 }
 
@@ -78,7 +79,7 @@ resource "null_resource" "generate-sshkey" {
 resource "vsphere_file" "push-file" {
 	datacenter       = var.vmw.datacenter
 	datastore        = var.vmw.controller.datastore
-	source_file      = "${path.root}/${local.bootfile_name}"
+	source_file      = local.bootfile_path
 	destination_file = "iso/${local.bootfile_name}"
 	depends_on = [
 		null_resource.pull-file
@@ -102,7 +103,7 @@ resource "vsphere_virtual_machine" "vm" {
 
 	# copy public key to vm
 	provisioner "file" {
-		source      = var.vmw.controller.public_key
+		source      = local.public_key
 		destination = "/tmp/authorized_keys"
 		connection {
 			host		= self.default_ip_address
@@ -113,14 +114,14 @@ resource "vsphere_virtual_machine" "vm" {
 	}
 	# enable authorized_keys
 	provisioner "remote-exec" {
-		inline = [<<-EOF
+		inline = [<<-EOT
 			echo "Creating authorized_keys.. "
 			mkdir -p /root/.ssh/
 			chmod 700 /root/.ssh
 			mv /tmp/authorized_keys /root/.ssh/authorized_keys
 			chmod 600 /root/.ssh/authorized_keys
 			cat /root/.ssh/authorized_keys
-		EOF
+		EOT
 		]
 		connection {
 			host		= self.default_ip_address
@@ -130,7 +131,7 @@ resource "vsphere_virtual_machine" "vm" {
 		}
 	}
 	provisioner "remote-exec" {
-		inline = [<<-EOF
+		inline = [<<-EOT
 			while [ ! -f /root/startup.done ]; do
 				sleep 9;
 				echo "Waiting for runonce startup scripts.. "
@@ -138,13 +139,13 @@ resource "vsphere_virtual_machine" "vm" {
 			hostnamectl set-hostname router
 			docker version
 			docker ps
-		EOF
+		EOT
 		]
 		connection {
 			host		= self.default_ip_address
 			type		= "ssh"
 			user		= "root"
-			private_key     = file("${path.root}/${local.private_key}")
+			private_key     = file(local.private_key)
 		}
 	}
 

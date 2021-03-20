@@ -1,8 +1,9 @@
 # install dns-service
 module "dns-service" {
-	source = "../../../modules/dns-service"
-	master_ip = local.master_ip
-	manifest = local.manifest
+	source			= "../../../modules/dns-service"
+	master_ip		= local.master_ip
+	master_ssh_key		= local.master_ssh_key
+	manifest		= local.manifest
 }
 
 # rndc provider

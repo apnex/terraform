@@ -5,9 +5,9 @@ locals {
 	vcenter_file	= "vcenter.iso"
 	vcenter_json	= "${path.root}/vcsa.json"
 	dns_server	= data.terraform_remote_state.stage0.outputs.dns-service-ip
+	gateway		= "10.30.0.254"
 	ip		= "10.30.0.120"
 	ip_prefix	= "24"
-	gateway		= "10.30.0.254"
 	ntp_server	= "10.30.0.30"
 	name		= "vcenter.lab02.syd"
 	system_name	= "vcenter.lab02.syd"

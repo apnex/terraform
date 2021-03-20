@@ -11,5 +11,9 @@ output "controller_moid" {
 }
 
 output "controller_ssh_key" {
-	value = var.vmw.controller.private_key
+	value = local.private_key
+}
+
+output "controller_pub_key" {
+	value = local.public_key
 }

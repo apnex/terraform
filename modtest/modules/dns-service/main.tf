@@ -52,7 +52,7 @@ data "external" "service-ip" {
 		read -r -d '' COMMANDS <<-EOF
 			kubectl get services -o json | jq -r '.items[] | select(.metadata.name | contains("vip-control-dns-rndc")).status.loadBalancer.ingress[0].ip'
 		EOF
-		VALUE=$(ssh root@"${var.master_ip}" -i "${var.master_ssh_key}" -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS" | tr -d '\r')
+		VALUE=$(ssh root@${var.master_ip} -i ${var.master_ssh_key} -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS" | tr -d '\r')
 		jq -n --arg value "$VALUE" '{"value":$value}'
 	EOT
 	]
