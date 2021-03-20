@@ -2,7 +2,7 @@
 data "external" "trigger" {
 	program = ["/bin/bash", "-c", <<EOF
 		#CHECKSUM=$(curl -L https://labops.sh/dns/terraform-dns.yaml | md5sum | awk '{ print $1 }')
-		CHECKSUM=$(cat /root/${var.manifest} | md5sum | awk '{ print $1 }')
+		CHECKSUM=$(cat ${path.root}/${var.manifest} | md5sum | awk '{ print $1 }')
 		jq -n --arg checksum "$CHECKSUM" '{"checksum":$checksum}'
 	EOF
 	]
@@ -13,13 +13,14 @@ resource "null_resource" "dns-service" {
 	triggers = {
 		md5		= data.external.trigger.result["checksum"]
 		master_ip	= var.master_ip
+		master_ssh_key	= var.master_ssh_key
 		manifest	= var.manifest
 	}
 	connection {
+		host		= self.triggers.master_ip
 		type		= "ssh"
 		user		= "root"
-		password	= "VMware1!"
-		host		= self.triggers.master_ip
+		private_key     = file(self.triggers.master_ssh_key)
 	}
 	provisioner "file" {
 		source      = "${path.root}/${self.triggers.manifest}"

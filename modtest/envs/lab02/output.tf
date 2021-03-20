@@ -7,3 +7,7 @@ output "controller_id" {
 output "controller_moid" {
 	value = module.controller.controller_moid
 }
+output "controller_ssh_key" {
+	value = "${path.cwd}/${module.controller.controller_ssh_key}"
+}
+

@@ -9,3 +9,7 @@ output "controller_id" {
 output "controller_moid" {
 	value = vsphere_virtual_machine.vm.moid
 }
+
+output "controller_ssh_key" {
+	value = var.vmw.controller.private_key
+}

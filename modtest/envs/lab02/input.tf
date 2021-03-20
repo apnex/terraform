@@ -21,6 +21,8 @@ variable "vmw" {
 			datastore = "ds-esx04"
 			bootfile_url = "http://labops.sh/library/labops.centos.stage2.iso"
 			bootfile_name = "labops.centos.stage2.iso"
+			private_key = "lab02.key"
+			public_key = "lab02.key.pub"
 		}
 	}
 }
