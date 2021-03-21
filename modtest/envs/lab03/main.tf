@@ -35,10 +35,6 @@ module "controller" {
 		vsphere_vapp_container.lab
 	]
 
-	# vsphere provider details
-	vsphere_server		= "vcenter.core.syd"
-	vsphere_user		= "administrator@vsphere.local"
-	vsphere_password	= "VMware1!SDDC"
 	vmw			= var.vmw
 	## dont pass directly - translate into specific vars
 }
