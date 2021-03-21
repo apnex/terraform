@@ -34,7 +34,7 @@ terraform apply -auto-approve
 
 ### 4) apply {env}->vcenter
 **Time: 30 mins**  
-*Note:* ensure that the target esx host fqdn can be resolved
+**Note:** ensure that the target esx host fqdn can be resolved
 ```
 terraform init
 terraform plan
