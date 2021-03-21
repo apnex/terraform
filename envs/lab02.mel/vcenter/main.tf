@@ -5,27 +5,28 @@ locals {
 	vcenter_file	= "vcenter.iso"
 	vcenter_json	= "${path.root}/vcsa.json"
 	dns_server	= data.terraform_remote_state.stage0.outputs.dns-service-ip
-	gateway		= "10.30.0.254"
-	ip		= "10.30.0.120"
+	gateway		= "172.16.10.1"
+	ip		= "172.16.10.120"
 	ip_prefix	= "24"
-	ntp_server	= "10.30.0.30"
-	name		= "vcenter.lab02.syd"
-	system_name	= "vcenter.lab02.syd"
+	ntp_server	= "172.16.10.1"
+	name		= "vcenter.lab02.mel"
+	system_name	= "vcenter.lab02.mel"
 	json		= jsonencode({
 		"__version": "2.13.0",
 		"new_vcsa": {
 			"vc": {
-				"hostname": "vcenter.core.syd",
+				"hostname": "vcenter.lab",
 				"username": "administrator@vsphere.local",
 				"password": "VMware1!SDDC",
 				"deployment_network": "pg-mgmt",
 				"datacenter": [
-					"core"
+					"mel"
 				],
-				"datastore": "ds-esx04",
+				"datastore": "ds-esx09",
 				"target": [
 					"cmp",
-					"esx04.core.syd"
+					"Resources",
+					local.prefix
 				]
 			},
 			"appliance": {
