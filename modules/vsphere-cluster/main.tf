@@ -16,14 +16,14 @@ data "vsphere_datacenter" "datacenter" {
 }
 
 data "vsphere_host_thumbprint" "thumbprint" {
-	for_each	= toset(local.nodes)
+	for_each	= toset(var.cluster.nodes)
 	address		= each.key
 	insecure	= true
 }
 
 
-resource "vsphere_compute_cluster" "cmp" {
-	name			= "cmp"
+resource "vsphere_compute_cluster" "cluster" {
+	name			= var.cluster.name
 	datacenter_id		= data.vsphere_datacenter.datacenter.id
 	drs_enabled		= true
 	drs_automation_level	= "partiallyAutomated"
@@ -37,12 +37,12 @@ resource "vsphere_compute_cluster" "cmp" {
 }
 
 resource "vsphere_host" "host" {
-	for_each	= toset(local.nodes)
+	for_each	= toset(var.cluster.nodes)
 	hostname	= each.key
 	username	= "root"
 	password	= "VMware1!SDDC"
 	thumbprint	= data.vsphere_host_thumbprint.thumbprint[each.key].id
-	cluster 	= vsphere_compute_cluster.cmp.id
+	cluster 	= vsphere_compute_cluster.cluster.id
 }
 
 resource "vsphere_distributed_virtual_switch" "dvs" {
@@ -53,7 +53,7 @@ resource "vsphere_distributed_virtual_switch" "dvs" {
 	standby_uplinks	= []
 	max_mtu		= 9000
 	dynamic "host" {
-		for_each	= toset(local.nodes)
+		for_each	= toset(var.cluster.nodes)
 		content {
 			host_system_id = vsphere_host.host[host.value].id
 			devices        = var.network_interfaces
@@ -62,7 +62,7 @@ resource "vsphere_distributed_virtual_switch" "dvs" {
 }
 
 resource "vsphere_distributed_port_group" "pgs" {
-	for_each			= var.portgroups
+	for_each			= var.cluster.portgroups
 	name                            = each.key
 	allow_forged_transmits		= true
 	allow_mac_changes		= true
@@ -72,7 +72,7 @@ resource "vsphere_distributed_port_group" "pgs" {
 }
 
 resource "vsphere_vnic" "vmk1" {
-	count			= length(local.nodes)
+	count			= length(var.cluster.nodes)
 	host			= values(vsphere_host.host)[count.index].id
 	distributed_switch_port	= vsphere_distributed_virtual_switch.dvs.id
 	distributed_port_group	= values(vsphere_distributed_port_group.pgs)[1].id
@@ -85,7 +85,7 @@ resource "vsphere_vnic" "vmk1" {
 }
 
 resource "vsphere_vnic" "vmk2" {
-	count			= length(local.nodes)
+	count			= length(var.cluster.nodes)
 	host			= values(vsphere_host.host)[count.index].id
 	distributed_switch_port	= vsphere_distributed_virtual_switch.dvs.id
 	distributed_port_group	= values(vsphere_distributed_port_group.pgs)[2].id
