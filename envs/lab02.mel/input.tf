@@ -6,7 +6,7 @@ terraform {
 provider "vsphere" {
 	vsphere_server		= "vcenter.lab"
 	user			= "administrator@vsphere.local"
-	password		= "ObiWan1!"
+	password		= "VMware1!"
 	allow_unverified_ssl	= true
 }
 
