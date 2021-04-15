@@ -1,0 +1,76 @@
+The below items need to occur BEFORE enabling VSAN on cluster or else disk claim will fail
+
+# Mark interface as management
+esxcli network ip interface ipv4 get
+esxcli network ip interface tag get -i vmk2
+esxcli network ip interface tag add -i vmk2 -t VSAN
+
+# Mark disk as SSD
+esxcli  storage core device list -d mpx.vmhba0:C0:T1:L0
+esxcli storage nmp satp rule remove -s VMW_SATP_LOCAL --device mpx.vmhba0:C0:T1:L0
+esxcli storage nmp satp rule add -s VMW_SATP_LOCAL --device mpx.vmhba0:C0:T1:L0 -o "enable_ssd"
+esxcli storage core claiming reclaim -d mpx.vmhba0:C0:T1:L0
+
+https://kb.vmware.com/s/article/2013188
+"You must restart the ESXi host for the changes to take effect."
+^ not actually required - given the HPP steps below in 7.0.2
+
+esxcli storage core claimrule load
+esxcli storage core claimrule run
+esxcli storage nmp satp rule list --satp=VMW_SATP_LOCAL
+
+## ITS A HPP DEVICE! ##
+esxcli storage hpp device list
+esxcli storage hpp device set -d mpx.vmhba0:C0:T1:L0 --mark-device-ssd=true
+esxcli storage hpp device usermarkedssd list
+
+# mark vmk2 as vsan
+esxcli network ip interface tag add -i vmk2 -t VSAN
+# mark cache-disk as SSD
+esxcli storage hpp device set -d mpx.vmhba0:C0:T1:L0 --mark-device-ssd=true
+
+API:
+#----------------- Start of code capture -----------------
+#---------------MarkAsSsd_Task---------------
+$scsiDiskUuid = '0000000000766d686261303a313a30'
+$_this = Get-View -Id 'HostStorageSystem-storageSystem-705'
+$_this.MarkAsSsd_Task($scsiDiskUuid)
+#----------------- End of code capture -----------------
+
+API-VSAN Tag:
+#----------------- Start of code capture -----------------
+
+#---------------QueryVnicStatus---------------
+$vnicDevice = 'vmk2'
+$_this = Get-View -Id 'IscsiManager-iscsiManager-705'
+$_this.QueryVnicStatus($vnicDevice)
+
+#---------------UpdateVirtualNic---------------
+$device = 'vmk2'
+$nic = New-Object VMware.Vim.HostVirtualNicSpec
+$_this = Get-View -Id 'HostNetworkSystem-networkSystem-705'
+$_this.UpdateVirtualNic($device, $nic)
+
+#---------------ConfigManager---------------
+$_this = Get-View -Id 'HostSystem-host-705'
+$_this.ConfigManager
+
+#---------------Config---------------
+$_this = Get-View -Id 'HostVsanSystem-vsanSystem-705'
+$_this.Config
+
+#---------------UpdateVsan_Task---------------
+$config = New-Object VMware.Vim.VsanHostConfigInfo
+$config.NetworkInfo = New-Object VMware.Vim.VsanHostConfigInfoNetworkInfo
+$config.NetworkInfo.Port = New-Object VMware.Vim.VsanHostConfigInfoNetworkInfoPortConfig[] (1)
+$config.NetworkInfo.Port[0] = New-Object VMware.Vim.VsanHostConfigInfoNetworkInfoPortConfig
+$config.NetworkInfo.Port[0].Device = 'vmk2'
+$_this = Get-View -Id 'HostVsanSystem-vsanSystem-705'
+$_this.UpdateVsan_Task($config)
+
+
+#----------------- End of code capture -----------------
+
+## NTP Configuration on Hosts
+
+
