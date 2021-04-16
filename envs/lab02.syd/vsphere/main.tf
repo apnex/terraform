@@ -18,7 +18,7 @@ module "vsphere" {
 	esx_id		= "${var.vmw.lab_id}${count.index + 1}"
 	esx_name	= "esx${var.vmw.lab_id}${count.index + 1}"
 	esx_network	= "pg-trunk"
-	esx_datastore	= "ds-esx09"
-	datacenter	= "mel"
+	esx_datastore	= "ds-esx01"
+	datacenter	= "core"
 	bootfile_url	= "http://esx.apnex.io/esx.iso"
 }

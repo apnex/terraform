@@ -1,52 +1,12 @@
-provider "vsphere" {
-	vsphere_server		= "vcenter.lab02.mel"
-	user			= "administrator@vsphere.local"
-	password		= "VMware1!SDDC"
-	allow_unverified_ssl	= true
-}
-
-
 ## separate locals to an input
 ## look at definition of switching and storage
 locals {
 	network_interfaces = [
 		"vmnic1"
 	]
-	portgroups = {
-		"pg-mgmt"	= 0,
-		"pg-vmotion"	= 11,
-		"pg-vsan"	= 12
-	}
-	clusters = {
-		cmp	= {
-			vsan	= true
-			storage	= {
-				vsan = {
-					cache	= "mpx.vmhba0:C0:T1:L0"
-					storage	= [
-						"mpx.vmhba0:C0:T2:L0"
-					]
-				}
-			}
-			nodes	= [
-				"esx21.lab02.mel",
-				"esx22.lab02.mel",
-				"esx23.lab02.mel"
-			]
-		}
-		mgmt	= {
-			storage	= {
-				local = {
-					disks = [
-						"mpx.vmhba0:C0:T2:L0"
-					]
-				}
-			}
-			nodes	= [ # "ds-<name"
-				"esx24.lab02.mel"
-			]
-		}
-	}
+	networks = var.networks
+	portgroups = var.portgroups
+	clusters = var.clusters
 	nodes = merge([
 		for key,cluster in local.clusters: {
 			for node in cluster.nodes: node => key
@@ -116,9 +76,9 @@ resource "vsphere_vnic" "vmk1" {
 	}
 	mtu		= 9000
 	ipv4 {
-		ip	= "172.16.11.${count.index + 121}"
+		ip	= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-vmotion"])}.${count.index + 121}"
 		netmask	= "255.255.255.0"
-		gw	= "172.16.11.1"
+		gw	= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-vmotion"])}.254"
 	}
 	netstack	= "vmotion"
 }
@@ -135,9 +95,9 @@ resource "vsphere_vnic" "vmk2" {
 	}
 	mtu		= 9000
 	ipv4 {
-		ip	= "172.16.12.${count.index + 121}"
+		ip	= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-vsan"])}.${count.index + 121}"
 		netmask	= "255.255.255.0"
-		gw	= "172.16.12.1"
+		gw	= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-vsan"])}.254"
 	}
 	netstack	= "defaultTcpipStack"
 	depends_on = [ # ensure that vmk2 is for vsan
@@ -145,14 +105,15 @@ resource "vsphere_vnic" "vmk2" {
 	]
 }
 
-# mark vmk2 wirh tag = VSAN
+# mark vmk2 with tag = VSAN
 resource "null_resource" "vsan-tag" {
 	count			= length(local.nodes)
 	triggers = {
 		run_always	= timestamp()
+		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
 	}
 	connection {
-		host		= "172.16.10.${count.index + 121}"
+		host		= self.triggers.host
 		type		= "ssh"
 		user		= "root"
 		password	= "VMware1!SDDC"
@@ -183,9 +144,10 @@ resource "null_resource" "marked-disk-ssd" {
 	count			= length(local.clusters.cmp.nodes)
 	triggers = {
 		run_always	= timestamp()
+		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
 	}
 	connection {
-		host		= "172.16.10.${count.index + 121}"
+		host		= self.triggers.host
 		type		= "ssh"
 		user		= "root"
 		password	= "VMware1!SDDC"
@@ -215,10 +177,6 @@ resource "vsphere_compute_cluster" "cluster" {
 		for key in each.value.nodes: vsphere_host.host[key].id
 	]
 	vsan_enabled		= try(each.value.vsan, false)
-	#vsan_disk_group {
-	#	cache		= "mpx.vmhba0:C0:T1:L0"
-	#	storage		= [ "mpx.vmhba0:C0:T2:L0" ]
-	#}
 	depends_on = [
 		null_resource.marked-disk-ssd
 	]
@@ -231,9 +189,10 @@ resource "null_resource" "vsan-disk-group" {
 	count			= length(local.clusters.cmp.nodes)
 	triggers = {
 		run_always	= timestamp()
+		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
 	}
 	connection {
-		host		= "172.16.10.${count.index + 121}"
+		host		= self.triggers.host
 		type		= "ssh"
 		user		= "root"
 		password	= "VMware1!SDDC"
@@ -260,20 +219,11 @@ resource "null_resource" "vsan-disk-group" {
 # create local datastore
 resource "vsphere_vmfs_datastore" "datastore" {
 	name		= "ds-esx24"
-	host_system_id	= vsphere_host.host["esx24.lab02.mel"].id
+	host_system_id	= vsphere_host.host["esx24.lab02.syd"].id
 	disks	= [
 		"mpx.vmhba0:C0:T2:L0"
 	]
 	depends_on = [
-		#vsphere_host.host["esx24.lab02.mel"].id
 		vsphere_compute_cluster.cluster
 	]
 }
-
-#data "vsphere_vmfs_disks" "available" {
-#	host_system_id	= vsphere_host.host["esx24.lab02.mel"].id
-#	rescan         = true
-#	depends_on = [
-#		vsphere_host.host["esx24.lab02.mel"]
-#	]
-#}

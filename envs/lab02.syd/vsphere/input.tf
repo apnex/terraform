@@ -12,9 +12,9 @@ terraform {
 #}
 
 provider "vsphere" {
-	vsphere_server		= "vcenter.lab"
+	vsphere_server		= "vcenter.core.syd"
 	user			= "administrator@vsphere.local"
-	password		= "ObiWan1!"
+	password		= "VMware1!SDDC"
 	allow_unverified_ssl	= true
 }
 
