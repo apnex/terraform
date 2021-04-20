@@ -4,15 +4,23 @@ terraform {
 	}
 }
 
-provider "vsphere" {
-	vsphere_server		= "vcenter.lab02.syd"
-	user			= "administrator@vsphere.local"
-	password		= "VMware1!SDDC"
-	allow_unverified_ssl	= true
+variable "networks" {
+	default = {
+		"pg-mgmt"	= "10.30.0.0/24",
+		"pg-vmotion"	= "10.30.2.0/24",
+		"pg-vsan"	= "10.30.3.0/24"
+	}
+}
+variable "portgroups" {
+	default = {
+		"pg-mgmt"	= 0,
+		"pg-vmotion"	= 302,
+		"pg-vsan"	= 303
+	}
 }
 
 # all disks in a cluster must be the same
-# if cache disk present, create a vsan_disk_group on host
+# if cache present, enable vsan
 variable "storage" {
 	default = {
 		vsan = {
@@ -44,19 +52,5 @@ variable "clusters" {
 				"esx24.lab02.syd"
 			]
 		}
-	}
-}
-variable "networks" {
-	default = {
-		"pg-mgmt"	= "10.30.0.0/24",
-		"pg-vmotion"	= "10.30.2.0/24",
-		"pg-vsan"	= "10.30.3.0/24"
-	}
-}
-variable "portgroups" {
-	default = {
-		"pg-mgmt"	= 0,
-		"pg-vmotion"	= 302,
-		"pg-vsan"	= 303
 	}
 }

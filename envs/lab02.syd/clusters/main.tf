@@ -1,5 +1,5 @@
 ## separate locals to an input
-## look at definition of switching and storage
+## look at definition of network and storage
 locals {
 	network_interfaces = [
 		"vmnic1"
@@ -7,10 +7,27 @@ locals {
 	networks = var.networks
 	portgroups = var.portgroups
 	clusters = var.clusters
+	storage = var.storage
 	nodes = merge([
 		for key,cluster in local.clusters: {
 			for node in cluster.nodes: node => key
 		}
+	]...)
+	vsan_disk_groups = merge([
+		for key,cluster in local.clusters: {
+			for node in cluster.nodes:
+				node => local.storage[cluster.storage]
+			if (try(local.storage[cluster.storage].cache, false) != false && try(local.storage[cluster.storage].capacity, false) != false)
+		}
+		if try(cluster.storage, false) != false
+	]...)
+	local_datastores = merge([
+		for key,cluster in local.clusters: {
+			for node in cluster.nodes:
+				node => local.storage[cluster.storage]
+			if (try(local.storage[cluster.storage].cache, false) == false && try(local.storage[cluster.storage].capacity, false) != false)
+		}
+		if try(cluster.storage, false) != false
 	]...)
 }
 
@@ -186,10 +203,13 @@ resource "vsphere_compute_cluster" "cluster" {
 ## need to add logic per cluster
 resource "null_resource" "vsan-disk-group" {
 	#count			= length(local.nodes)
-	count			= length(local.clusters.cmp.nodes)
+        for_each		= local.vsan_disk_groups
 	triggers = {
-		run_always	= timestamp()
-		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
+		#run_always	= timestamp()
+		#host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
+		host		= each.key
+		cache		= each.value.cache
+		capacity	= each.value.capacity[0]
 	}
 	connection {
 		host		= self.triggers.host
@@ -199,14 +219,15 @@ resource "null_resource" "vsan-disk-group" {
 	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
-			esxcli vsan storage add -s mpx.vmhba0:C0:T1:L0 -d mpx.vmhba0:C0:T2:L0
+			#esxcli vsan storage add -s mpx.vmhba0:C0:T1:L0 -d mpx.vmhba0:C0:T2:L0
+			esxcli vsan storage add -s "${self.triggers.cache}" -d "${self.triggers.capacity}"
 		EOT
 		]
 	}
 	provisioner "remote-exec" {
 		when = destroy
 		inline	= [<<-EOT
-			esxcli vsan storage remove -s mpx.vmhba0:C0:T1:L0
+			esxcli vsan storage remove -s "${self.triggers.cache}"
 			esxcli vsan storage list
 		EOT
 		]
