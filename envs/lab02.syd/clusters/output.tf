@@ -1,7 +1,3 @@
-output "testicle" {
-	value = local.nodes
+output "compute_clusters" {
+	value = local.compute_clusters
 }
-
-#output "disks" {
-#	value = data.vsphere_vmfs_disks.available.disks
-#}

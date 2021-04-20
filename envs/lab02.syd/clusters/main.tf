@@ -1,5 +1,3 @@
-## separate locals to an input
-## look at definition of network and storage
 locals {
 	network_interfaces = [
 		"vmnic1"
@@ -29,6 +27,15 @@ locals {
 		}
 		if try(cluster.storage, false) != false
 	]...)
+	compute_clusters = merge([
+		for key,cluster in local.clusters: {
+			"${key}" = {
+				vsan = (try(local.storage[cluster.storage].cache, false) != false) ? true : false
+				nodes = cluster.nodes
+			}
+		}
+	]...)
+
 }
 
 resource "vsphere_datacenter" "datacenter" {
@@ -155,13 +162,12 @@ resource "null_resource" "vsan-tag" {
 	]
 }
 
-# mark mpx.vmhba0:C0:T1:L0 as SSD
+# mark cache disk as SSD
 resource "null_resource" "marked-disk-ssd" {
-	#count			= length(local.nodes)
-	count			= length(local.clusters.cmp.nodes)
+        for_each		= local.vsan_disk_groups
 	triggers = {
-		run_always	= timestamp()
-		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
+		host		= each.key
+		cache		= each.value.cache
 	}
 	connection {
 		host		= self.triggers.host
@@ -171,7 +177,7 @@ resource "null_resource" "marked-disk-ssd" {
 	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
-			esxcli storage hpp device set -d mpx.vmhba0:C0:T1:L0 --mark-device-ssd=true
+			esxcli storage hpp device set -d "${self.triggers.cache}" --mark-device-ssd=true
 			esxcli storage hpp device usermarkedssd list
 		EOT
 		]
@@ -183,7 +189,7 @@ resource "null_resource" "marked-disk-ssd" {
 
 ## foreach cluster, create cluster
 resource "vsphere_compute_cluster" "cluster" {
-	for_each		= local.clusters
+	for_each		= local.compute_clusters
 	name			= each.key
 	datacenter_id		= vsphere_datacenter.datacenter.moid
 	drs_enabled		= true
@@ -193,7 +199,7 @@ resource "vsphere_compute_cluster" "cluster" {
 	host_system_ids = [
 		for key in each.value.nodes: vsphere_host.host[key].id
 	]
-	vsan_enabled		= try(each.value.vsan, false)
+	vsan_enabled		= each.value.vsan
 	depends_on = [
 		null_resource.marked-disk-ssd
 	]
@@ -202,11 +208,8 @@ resource "vsphere_compute_cluster" "cluster" {
 # claim disks
 ## need to add logic per cluster
 resource "null_resource" "vsan-disk-group" {
-	#count			= length(local.nodes)
-        for_each		= local.vsan_disk_groups
+	for_each		= local.vsan_disk_groups
 	triggers = {
-		#run_always	= timestamp()
-		#host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
 		host		= each.key
 		cache		= each.value.cache
 		capacity	= each.value.capacity[0]
@@ -219,7 +222,6 @@ resource "null_resource" "vsan-disk-group" {
 	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
-			#esxcli vsan storage add -s mpx.vmhba0:C0:T1:L0 -d mpx.vmhba0:C0:T2:L0
 			esxcli vsan storage add -s "${self.triggers.cache}" -d "${self.triggers.capacity}"
 		EOT
 		]
@@ -239,10 +241,11 @@ resource "null_resource" "vsan-disk-group" {
 
 # create local datastore
 resource "vsphere_vmfs_datastore" "datastore" {
-	name		= "ds-esx24"
-	host_system_id	= vsphere_host.host["esx24.lab02.syd"].id
+	for_each	= local.local_datastores
+	name		= "ds-${each.key}"
+	host_system_id	= vsphere_host.host[each.key].id
 	disks	= [
-		"mpx.vmhba0:C0:T2:L0"
+		each.value.capacity[0]
 	]
 	depends_on = [
 		vsphere_compute_cluster.cluster
