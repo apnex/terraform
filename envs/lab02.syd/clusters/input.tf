@@ -37,12 +37,14 @@ variable "clusters" {
 				"esx22.lab02.syd",
 				"esx23.lab02.syd"
 			]
+			vcls	= false
 		}
 		mgmt	= {
 			storage	= "local"
 			nodes	= [
 				"esx24.lab02.syd"
 			]
+			vcls	= false
 		}
 	}
 }

@@ -31,11 +31,12 @@ locals {
 		for key,cluster in local.clusters: {
 			"${key}" = {
 				vsan = (try(local.storage[cluster.storage].cache, false) != false) ? true : false
+				vcls = (try(cluster.vcls, "notexist") != "notexist") ? cluster.vcls : true
 				nodes = cluster.nodes
+			
 			}
 		}
 	]...)
-
 }
 
 resource "vsphere_datacenter" "datacenter" {
@@ -133,7 +134,7 @@ resource "vsphere_vnic" "vmk2" {
 resource "null_resource" "vsan-tag" {
 	count			= length(local.nodes)
 	triggers = {
-		run_always	= timestamp()
+		#run_always	= timestamp()
 		host		= "${regex("[0-9]+\\.[0-9]+\\.[0-9]+", local.networks["pg-mgmt"])}.${count.index + 121}"
 	}
 	connection {
@@ -249,5 +250,131 @@ resource "vsphere_vmfs_datastore" "datastore" {
 	]
 	depends_on = [
 		vsphere_compute_cluster.cluster
+	]
+}
+
+# vcenter advanced settings
+resource "null_resource" "vcenter-enabled-bash" {
+	triggers = {
+		vcenter		= "vcenter.lab02.syd"
+		username	= "root"
+		password	= "VMware1!SDDC"
+	}
+	connection {
+		host		= self.triggers.vcenter
+		type		= "ssh"
+		user		= self.triggers.username
+		password	= self.triggers.password
+		agent		= false
+	}
+	# set shell to /bin/bash for root
+	provisioner "local-exec" {
+		command = <<-EOT
+			read -r -d '' COMMANDS <<-EOF
+				shell
+				chsh -s /bin/bash root
+			EOF
+			sshpass -p ${self.triggers.password} ssh root@${self.triggers.vcenter} -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS"
+		EOT
+	}
+	# set shell to /bin/appliancesh for root
+	/*
+	provisioner "local-exec" {
+		when = destroy
+		command = <<-EOT
+			read -r -d '' COMMANDS <<-EOF
+				chsh -s /bin/appliancesh root
+			EOF
+			sshpass -p ${self.triggers.password} ssh root@${self.triggers.vcenter} -o LogLevel=QUIET -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -t "$COMMANDS"
+		EOT
+	}
+	*/
+}
+
+# vcenter advanced settings
+resource "null_resource" "vcenter-advanced-settings" {
+	triggers = {
+		vcenter		= "vcenter.lab02.syd"
+		username	= "root"
+		password	= "VMware1!SDDC"
+		xmlstring	= join("", [
+			for cluster in vsphere_compute_cluster.cluster:
+				"<${cluster.id}><enabled>false</enabled></${cluster.id}>"
+			if (!local.compute_clusters[cluster.name].vcls)
+		])
+	}
+	connection {
+		host		= self.triggers.vcenter
+		type		= "ssh"
+		user		= self.triggers.username
+		password	= self.triggers.password
+		agent		= false
+	}
+	## remove existing and replace with new vcls section
+	provisioner "remote-exec" {
+		inline	= [<<-EOT
+			read -r -d '' XSLT <<-EOF
+				<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+					<xsl:output omit-xml-declaration="yes" indent="yes"/>
+					<xsl:template match="config">
+						<xsl:copy>
+							<xsl:apply-templates select="@*" />
+								<vcls>
+									<clusters>
+										${self.triggers.xmlstring}
+									</clusters>
+								</vcls>
+							<xsl:apply-templates select="node()" />
+						</xsl:copy>
+					</xsl:template>
+					<xsl:template match="node()|@*" name="identity">
+						<xsl:copy>
+							<xsl:apply-templates select="node()|@*"/>
+						</xsl:copy>
+					</xsl:template>
+					<xsl:template match="vcls"/>
+				</xsl:stylesheet>
+			EOF
+			# backup previous vpxd.cfg
+			cp /etc/vmware-vpx/vpxd.cfg /etc/vmware-vpx/vpxd.old
+			echo -n "$XSLT" | xsltproc - /etc/vmware-vpx/vpxd.old | xmllint --format - | sed '1d' > /etc/vmware-vpx/vpxd.cfg
+			service-control --restart vpxd
+			echo "Waiting for vCenter API to start - sleep 5"
+			sleep 5
+			echo "Sleep 5 Complete"
+		EOT
+		]
+	}
+	## remove vcls section
+	## returns "NotAuthenticated" error as restarting vpxd service breaks terraform provider
+	## therefore, don't remove settings on destroy
+	/*
+	provisioner "remote-exec" {
+		when = destroy
+		inline	= [<<-EOT
+			read -r -d '' XSLT <<-EOF
+				<xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+					<xsl:output omit-xml-declaration="yes" indent="yes"/>
+					<xsl:template match="node()|@*" name="identity">
+						<xsl:copy>
+							<xsl:apply-templates select="node()|@*"/>
+						</xsl:copy>
+					</xsl:template>
+					<xsl:template match="vcls"/>
+				</xsl:stylesheet>
+			EOF
+			# backup previous vpxd.cfg
+			cp /etc/vmware-vpx/vpxd.cfg /etc/vmware-vpx/vpxd.old
+			echo -n "$XSLT" | xsltproc - /etc/vmware-vpx/vpxd.old | xmllint --format - | sed '1d' > /etc/vmware-vpx/vpxd.cfg
+			service-control --restart vpxd
+			echo "Waiting for vCenter API to start - sleep 10"
+			sleep 10
+			echo "Sleep 10 Complete"
+		EOT
+		]
+	}
+	*/
+	depends_on = [
+		null_resource.vcenter-enabled-bash
 	]
 }
