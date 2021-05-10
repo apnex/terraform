@@ -1,0 +1,38 @@
+
+- hosts: localhost
+  connection: local
+  gather_facts: yes
+
+  pre_tasks:
+    - pip:
+        name: 
+        - avisdk 
+        - dnspython
+        state: latest
+        #executable: pip3.3
+    - name: "Wait for the portal to become active"
+      uri:
+        url: "https://{{ avi_credentials['controller'] }}/api/initial-data"
+        validate_certs: no
+        status_code: 200
+      register: result
+      until: result.status == 200
+      retries: 300
+      delay: 10
+
+  roles:
+    - role: avinetworks.avisdk
+    - role: configure_contentswitch_demo
+    - role: configure_global_demo
+
+
+
+
+
+
+
+
+
+
+
+  

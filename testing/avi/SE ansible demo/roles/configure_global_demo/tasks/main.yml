@@ -1,0 +1,247 @@
+
+- name: lookup cluster 1 uuid
+#san francisco
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "{{ 'c1.avidemo.vmware.com' if (demo_region == 'us') else 'c1.emea.avidemo.vmware.com' }}"
+    http_method: get
+    path: cluster
+  register: cluster_ctrl1
+
+
+
+- name: lookup cluster 2 uuid
+#london
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "{{ 'c2.avidemo.vmware.com' if (demo_region == 'us') else 'c2.emea.avidemo.vmware.com' }}"
+    http_method: get
+    path: cluster
+  register: cluster_ctrl2
+
+
+- name: lookup cluster 3 uuid
+#tokyo
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "{{ 'c3.avidemo.vmware.com' if (demo_region == 'us') else 'c3.emea.avidemo.vmware.com' }}"
+    http_method: get
+    path: cluster
+  register: cluster_ctrl3
+
+
+- name: lookup cluster 4 uuid
+#sao paulo
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "c4.avidemo.vmware.com"
+    http_method: get
+    path: cluster
+  register: cluster_ctrl4
+  when: 
+  - demo_region == "us"
+
+- name: lookup cluster 5 uuid
+#brisbane
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "c5.avidemo.vmware.com"
+    http_method: get
+    path: cluster
+  register: cluster_ctrl5
+  when: 
+  - demo_region == "us"
+
+- name: lookup cluster 1 demoavi VS
+#san francisco
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    api_version: 18.2.8
+    controller: "{{ 'c1.avidemo.vmware.com' if (demo_region == 'us') else 'c1.emea.avidemo.vmware.com' }}"
+    http_method: get
+    path: virtualservice
+    tenant: Demo
+    params:
+      { name: WAF_Demo_VS }
+  register: demoavi_vs_ctrl1
+#- debug: var=demoavi_vs_ctrl1['obj']['results'][0]['vip'][0]['ip_address']['addr']
+#/api/vsvip/?referred_by=virtualservice:virtualservice-e320e1ad-8f71-46e7-8d38-9436b5de6ccf
+
+- name: lookup cluster 2 demoavi VS
+#london
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "{{ 'c2.avidemo.vmware.com' if (demo_region == 'us') else 'c2.emea.avidemo.vmware.com' }}"
+    api_version: 18.2.8
+    http_method: get
+    path: virtualservice
+    tenant: Demo
+    params:
+      { name: WAF_Demo_VS }
+  register: demoavi_vs_ctrl2
+#- debug: var=demoavi_vs_ctrl2['obj']['results'][0]['vip'][0]['ip_address']['addr']
+
+- name: lookup cluster 3 demoavi VS
+#tokyo
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "{{ 'c3.avidemo.vmware.com' if (demo_region == 'us') else 'c3.emea.avidemo.vmware.com' }}"
+    http_method: get
+    api_version: 18.2.8
+    path: virtualservice
+    tenant: Demo
+    params:
+      { name: WAF_Demo_VS }
+  register: demoavi_vs_ctrl3
+
+- name: lookup cluster 4 demoavi VS
+#sao_paulo
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "c4.avidemo.vmware.com"
+    http_method: get
+    api_version: 18.2.8
+    path: virtualservice
+    tenant: Demo
+    params:
+      { name: WAF_Demo_VS }
+  register: demoavi_vs_ctrl4
+  when: 
+  - demo_region == "us"
+
+- name: lookup cluster 5 demoavi VS
+#brisbane
+  avi_api_session:
+    avi_credentials: "{{ avi_credentials }}"
+    controller: "c5.avidemo.vmware.com"
+    http_method: get
+    api_version: 18.2.8
+    path: virtualservice
+    tenant: Demo
+    params:
+      { name: WAF_Demo_VS }
+  register: demoavi_vs_ctrl5
+  when: 
+  - demo_region == "us"
+
+- name: defining avi config
+  set_fact:
+    avi_config:
+    #- name: Define global demoavi vs
+      gslbservice:
+      - name: Automation_GeoDB_Global_VS
+        domain_names:
+        - "automation-geo.global.avidemo.vmware.com"
+        down_response: 
+          type: GSLB_SERVICE_DOWN_RESPONSE_NONE
+        groups:
+        - members:
+          - cluster_uuid: "{{ cluster_ctrl1.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl1['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl1['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl2.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl2['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl2['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl3.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl3['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl3['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl4.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl4['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl4['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl5.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl5['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl5['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          name: automation-geo-pool
+          priority: 9
+        health_monitor_refs:
+          - /api/healthmonitor?name=System-GSLB-HTTPS
+        controller_health_status_enabled: true
+        pool_algorithm: GSLB_SERVICE_ALGORITHM_GEO
+        use_edns_client_subnet: true
+        enabled: true
+        is_federated: true
+        tenant: "{{ tenant_name }}"       
+  when: 
+  - demo_region == "us"
+
+- name: defining avi config
+  set_fact:
+    avi_config:
+    #- name: Define global demoavi vs
+      gslbservice:
+      - name: Automation_GeoDB_Global_VS
+        domain_names:
+        - "automation-geo.global.emea.avidemo.vmware.com"
+        down_response: 
+          type: GSLB_SERVICE_DOWN_RESPONSE_NONE
+        groups:
+        - members:
+          - cluster_uuid: "{{ cluster_ctrl1.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl1['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              #addr: "{{ demoavi_vs_ctrl1['obj']['results'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl1['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl2.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl2['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              #addr: "{{ demoavi_vs_ctrl2['obj']['results'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl2['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          - cluster_uuid: "{{ cluster_ctrl3.obj.uuid }}"
+            ip:
+              addr: "{{ demoavi_vs_ctrl3['obj']['results'][0]['vip'][0]['ip_address']['addr'] }}"
+              #addr: "{{ demoavi_vs_ctrl3['obj']['results'][0]['ip_address']['addr'] }}"
+              type: V4
+            vs_uuid: "{{ demoavi_vs_ctrl3['obj']['results'][0]['uuid'] }}"
+            location:
+              source: GSLB_LOCATION_SRC_INHERIT_FROM_SITE
+          name: automation-geo-pool
+          priority: 9
+        health_monitor_refs:
+          - /api/healthmonitor?name=System-GSLB-HTTPS
+        controller_health_status_enabled: true
+        pool_algorithm: GSLB_SERVICE_ALGORITHM_GEO
+        use_edns_client_subnet: true
+        enabled: true
+        is_federated: true
+        tenant: "{{ tenant_name }}"
+  when: 
+  - demo_region == "emea"
+
+- name: Avi Application | Setup geodb VS
+  import_role:
+    name: avinetworks.aviconfig
+  vars:
+    avi_config: "{{avi_config}}"
+    avi_credentials:
+      controller: "{{ 'c3.avidemo.vmware.com' if (demo_region == 'us') else 'c3.emea.avidemo.vmware.com' }}"
+      #username: automation_user
+      #password: "@ut0m@t!0n"
+      username: admin
+      password: avi123$%
+      api_version: 20.1.1
