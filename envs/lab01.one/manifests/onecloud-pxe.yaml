@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-pxe
+spec:
+  selector:
+    matchLabels:
+      name: control-pxe-deploy
+  template:
+    metadata:
+      labels:
+        name: control-pxe-deploy
+    spec:
+      volumes:
+        - name: pxe-conf
+          configMap:
+            defaultMode: 0644
+            name: pxe-conf-map
+      hostNetwork: true
+      containers:
+      - name: control-pxe 
+        image: apnex/control-pxe
+        volumeMounts:
+          - mountPath: /etc/dhcp/dhcpd.conf
+            name: pxe-conf
+            subPath: dhcpd.conf
+        securityContext:
+          privileged: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pxe-conf-map
+data:
+  dhcpd.conf: |
+    # global options
+    include "/etc/dhcp/ipxe.options";
+    default-lease-time 600;
+    max-lease-time 7200;
+    authoritative;
+
+    # mgmt subnet
+    subnet 172.16.10.0 netmask 255.255.255.0 {
+    	range 172.16.10.50 172.16.10.99;
+    	next-server 172.16.10.1;
+    	option subnet-mask 255.255.255.0;
+    	option broadcast-address 172.16.10.255;
+    	option routers 172.16.10.1;
+    	option domain-name "core.one";
+    	option domain-name-servers 10.79.0.132;
+    }
+
+    # bound ips
+    host esx11 {
+    	option host-name "esx11.lab01.one";
+    	hardware ethernet 00:50:56:04:8f:5e;
+    	fixed-address 172.16.10.111;
+    }
+    host esx12 {
+    	option host-name "esx12.lab01.one";
+    	hardware ethernet 00:50:56:04:8f:61;
+    	fixed-address 172.16.10.112;
+    }
+    host esx13 {
+    	option host-name "esx13.lab01.one";
+    	hardware ethernet 00:50:56:04:8f:64;
+    	fixed-address 172.16.10.113;
+    }
+    host esx14.lab {
+    	option host-name "esx14.lab01.one";
+    	hardware ethernet 00:50:56:04:8f:67;
+    	fixed-address 172.16.10.114;
+    }
+    host esx15.lab {
+    	option host-name "esx15.lab01.one";
+    	hardware ethernet 00:50:56:04:8f:6a;
+    	fixed-address 172.16.10.115;
+    }

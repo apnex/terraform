@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: control-ntp
+spec:
+  hostNetwork: true
+  containers:
+    - name: control-ntp
+      image: apnex/control-ntp
+      securityContext:
+        capabilities:
+          add: ["SYS_NICE","SYS_RESOURCE","SYS_TIME"]

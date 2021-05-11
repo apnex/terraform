@@ -1,0 +1,87 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vip-control-dns
+  labels:
+    app: control-dns
+  annotations:
+    metallb.universe.tf/allow-shared-ip: host
+spec:
+  selector:
+    app: control-dns
+  ports:
+    - port: 53
+      targetPort: 53
+      protocol: UDP
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: control-dns
+  labels:
+    app: control-dns
+spec:
+  hostNetwork: false
+  containers:
+  - name: control-dns
+    image: apnex/onecloud-dns
+    volumeMounts:
+    - name: config-volume
+      mountPath: /usr/lib/node_modules/bind-cli/lib/records.json
+      subPath: records.json
+  volumes:
+    - name: config-volume
+      configMap:
+        name: dns-records
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dns-records
+  namespace: default
+data:
+  records.json: |
+    [
+    	{
+    		"name": "control.lab01.one",
+    		"addr": "172.16.10.1"
+    	},
+    	{
+    		"name": "vcenter.lab01.one",
+    		"addr": "172.16.10.110"
+    	},
+    	{
+    		"name": "esx11.lab01.one",
+    		"addr": "172.16.10.111"
+    	},
+    	{
+    		"name": "esx12.lab01.one",
+    		"addr": "172.16.10.112"
+    	},
+    	{
+    		"name": "esx13.lab01.one",
+    		"addr": "172.16.10.113"
+    	},
+    	{
+    		"name": "esx14.lab01.one",
+    		"addr": "172.16.10.114"
+    	},
+    	{
+    		"name": "esx15.lab01.one",
+    		"addr": "172.16.10.115"
+    	},
+    	{
+    		"name": "nsxm.lab01.one",
+    		"addr": "172.16.10.117"
+    	},
+    	{
+    		"name": "edge01.lab01.one",
+    		"addr": "172.16.10.118"
+    	},
+    	{
+    		"name": "avic.lab01.one",
+    		"addr": "172.16.10.119"
+    	}
+    ]
