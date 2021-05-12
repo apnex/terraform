@@ -1,0 +1,188 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: control-dns
+  labels:
+    app: control-dns
+spec:
+  hostNetwork: true
+  volumes:
+    - name: dns-conf
+      configMap:
+        defaultMode: 0777
+        name: map-dns-conf
+    - name: dns-start
+      configMap:
+        defaultMode: 0777
+        name: map-dns-start
+  containers:
+  - name: control-dns
+    image: apnex/terraform-dns
+    volumeMounts:
+      - name: dns-conf
+        mountPath: /usr/lib/node_modules/bind-cli/lib/records.json
+        subPath: records.json
+      - mountPath: /etc/bind/named.conf
+        name: dns-conf
+        subPath: named.conf
+      - mountPath: /var/bind/named.conf.local
+        name: dns-conf
+        subPath: named.conf.local
+      - mountPath: /etc/bind/rndc.conf
+        name: dns-conf
+        subPath: rndc.conf
+      - mountPath: /bin/dns-start.sh
+        name: dns-start
+        subPath: dns-start.sh
+    command: ["/bin/dns-start.sh"]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: map-dns-start
+data:
+  dns-start.sh: |
+    #!/bin/sh
+    echo "Initialising DNS configuration..."
+    if [ ! -f /var/bind/lab01.one.zone.fwd ]; then
+    	echo "[INFO] fwd zone file missing - creating file...."
+    cat <<'EOF' >/var/bind/lab01.one.zone.fwd
+    $TTL 86400		; 1 day
+    @	IN	SOA ns1.lab01.one. mail.lab01.one. (
+    		100	; serial
+    		3600	; refresh
+    		1800	; retry
+    		604800	; expire
+    		86400	; minimum
+    	)
+    		IN	NS	ns1.lab01.one.
+    ns1		IN	A	172.16.10.1
+    lb		IN	NS	avi1
+    avi1	IN	A	172.16.10.120
+    EOF
+    fi
+    cat /var/bind/lab01.one.zone.fwd
+    echo "Starting BIND on node... "
+    /usr/sbin/named
+    sleep 5
+    echo "Importing records.json... "
+    bind-cli record.import
+    tail -f /var/log/named.log
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: map-dns-conf
+data:
+  named.conf: |
+    options {
+    	directory "/var/bind";
+    	allow-query	{ 0.0.0.0/0; };
+    	allow-transfer	{ 0.0.0.0/0; };
+    	allow-update	{ 0.0.0.0/0; };
+    	allow-new-zones yes;
+    	recursion yes;
+    	forwarders {
+    		10.79.0.132;
+    		10.79.0.133;
+    	};
+    	dnssec-enable yes;
+    	dnssec-validation yes;
+    };
+    include "/var/bind/named.conf.local";
+  named.conf.local: |
+    logging {
+    	channel "default_syslog" {
+    		file "/var/log/named.log" versions 3 size 5m;
+    		print-time yes;
+    		print-category yes;
+    		print-severity yes;
+    		severity debug;
+    	};
+    	channel "black" {
+    		file "/var/log/named.black" versions 3 size 5m;
+    		print-time yes;
+    		print-category yes;
+    		print-severity yes;
+    		severity debug;
+    	};
+    	category default { default_syslog; };
+    	category general { black; };
+    	category config { default_syslog; };
+    	category security { default_syslog; };
+    	category resolver { default_syslog; };
+    	category xfer-in { default_syslog; };
+    	category xfer-out { default_syslog; };
+    	category notify { default_syslog; };
+    	category client { default_syslog; };
+    	category network { default_syslog; };
+    	category update { default_syslog; };
+    	category queries { default_syslog; };
+    	category lame-servers { default_syslog; };
+    };
+    controls {   
+    	inet * port 953
+    	allow { 0.0.0.0/0; } 
+    	keys { dnsctl; };
+    };
+    key "dnsctl" {   
+    	algorithm hmac-md5;   
+    	secret "Vk13YXJlMSE="; # echo -n 'VMware1!' | base64
+    };
+    zone "lab01.syd" {
+    	type master;
+    	file "/var/bind/lab01.one.zone.fwd";
+    };
+  rndc.conf: |
+    options {   
+    	default-server  localhost;   
+    	default-key     "dnsctl"; 
+    };
+    key "dnsctl" {
+    	algorithm hmac-md5;
+    	secret "Vk13YXJlMSE="; # echo -n 'VMware1!' | base64
+    };
+  records.json: |
+    [
+    	{
+    		"name": "control.lab01.one",
+    		"addr": "172.16.10.1"
+    	},
+    	{
+    		"name": "vcenter.lab01.one",
+    		"addr": "172.16.10.110"
+    	},
+    	{
+    		"name": "esx11.lab01.one",
+    		"addr": "172.16.10.111"
+    	},
+    	{
+    		"name": "esx12.lab01.one",
+    		"addr": "172.16.10.112"
+    	},
+    	{
+    		"name": "esx13.lab01.one",
+    		"addr": "172.16.10.113"
+    	},
+    	{
+    		"name": "esx14.lab01.one",
+    		"addr": "172.16.10.114"
+    	},
+    	{
+    		"name": "esx15.lab01.one",
+    		"addr": "172.16.10.115"
+    	},
+    	{
+    		"name": "nsxm.lab01.one",
+    		"addr": "172.16.10.117"
+    	},
+    	{
+    		"name": "edge01.lab01.one",
+    		"addr": "172.16.10.118"
+    	},
+    	{
+    		"name": "avic.lab01.one",
+    		"addr": "172.16.10.119"
+    	}
+    ]
