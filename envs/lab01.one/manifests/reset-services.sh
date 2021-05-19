@@ -12,7 +12,7 @@ if ! RESULT=$(nmcli connection show id eth1.5) ; then
 fi
 nmcli connection show
 
-## check / create iptables NAT rule
+## check for iptables NAT rule
 NATRULE="POSTROUTING -o eth0 -j MASQUERADE"
 if [[ $(iptables -t nat -S POSTROUTING | grep "${NATRULE}") ]]; then
 	echo "POSTROUTING SNAT already configured for eth0"
@@ -26,18 +26,19 @@ ETH=$(route | grep ^default | sed "s/.* //")
 IPADDRESS=$(ip addr show "${ETH}" | grep inet\ | awk '{print $2}' | cut -d/ -f1)
 
 ## kubectl healthcheck
+KUBECONFIG="--kubeconfig=/root/.kube/config"
 echo "[[ Kubernetes API Healthcheck ]]"
-HEALTHY=$(kubectl -n kube-system get pods 2>/dev/null)
+HEALTHY=$(kubectl ${KUBECONFIG} -n kube-system get pods 2>/dev/null)
 while [[ -z ${HEALTHY} ]]; do
 	echo "socket [ localhost:6443 ] api [ no response ]"
 	sleep 10
-	HEALTHY=$(kubectl -n kube-system get pods 2>/dev/null)
+	HEALTHY=$(kubectl ${KUBECONFIG} -n kube-system get pods 2>/dev/null)
 done
 echo "socket [ localhost:6443 ] api [ healthy ]"
 
 ## clear "NodeAffinity" errors
 echo "Clearing [ NodeAffinity ] errored pods"
-kubectl delete pods --field-selector status.phase=Failed --all-namespaces
+kubectl ${KUBECONFIG} delete pods --field-selector status.phase=Failed --all-namespaces
 
 ## configure and reset MetalLb
 echo "Restarting MetalLB with new IP [ ${IPADDRESS} ]"
@@ -56,5 +57,5 @@ data:
       - ${IPADDRESS}/32
 EOF
 echo "${METALPOOL}"
-printf "${METALPOOL}" | kubectl apply -f -
-kubectl -n metallb-system delete pods --all
+printf "${METALPOOL}" | kubectl ${KUBECONFIG} apply -f -
+kubectl ${KUBECONFIG} -n metallb-system delete pods --all
