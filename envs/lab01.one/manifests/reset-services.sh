@@ -1,26 +1,29 @@
 #!/bin/bash
 
-## read values from shell
-read -p "ADDRESS--[ e.g 10.79.231.1   ]-: " ADDRESS
-read -p "MASKLEN--[ e.g 24            ]-: " MASKLEN
-read -p "GATEWAY--[ e.g 10.79.231.254 ]-: " GATEWAY
-read -p "DNS------[ e.g 10.79.0.132   ]-: " DNS
-#ADDRESS="10.79.231.1"
-#MASKLEN="24"
-#GATEWAY="10.79.231.254"
-#DNS="10.79.0.132"
+## check / create vlan 5 interface
+INTERNALNIC="eth1"
+if ! RESULT=$(nmcli connection show id eth1.5) ; then
+	nmcli connection add type vlan con-name ${INTERNALNIC}.5 dev ${INTERNALNIC} id 5
+	nmcli connection modify ${INTERNALNIC}.5 \
+		ipv4.method manual \
+		ipv4.addresses 172.16.5.1/24 \
+		ipv4.never-default yes
+	nmcli connection up ${INTERNALNIC}.5
+fi
+nmcli connection show
+
+## check / create iptables NAT rule
+NATRULE="POSTROUTING -o eth0 -j MASQUERADE"
+if [[ $(iptables -t nat -S POSTROUTING | grep "${NATRULE}") ]]; then
+	echo "POSTROUTING SNAT already configured for eth0"
+else
+	echo "Configuring POSTROUTING SNAT for eth0"
+	iptables -t nat -A ${NATRULE}
+fi
 
 ## determine IPV4 ADDRESS of default route interface
-#ETH=$(route | grep ^default | sed "s/.* //")
-#ADDRESS=$(ip addr show "${ETH}" | grep inet\ | awk '{print $2}' | cut -d/ -f1)
-
-## Clear hard-coded MAC and configure interface IP
-nmcli connection modify eth0 802-3-ethernet.mac-address ""
-nmcli connection modify eth0 ipv4.method manual
-nmcli connection modify eth0 ipv4.addresses "${ADDRESS}/${MASKLEN}"
-nmcli connection modify eth0 ipv4.gateway "${GATEWAY}"
-nmcli connection modify eth0 ipv4.dns "${DNS}"
-nmcli connection up eth0
+ETH=$(route | grep ^default | sed "s/.* //")
+IPADDRESS=$(ip addr show "${ETH}" | grep inet\ | awk '{print $2}' | cut -d/ -f1)
 
 ## kubectl healthcheck
 echo "[[ Kubernetes API Healthcheck ]]"
