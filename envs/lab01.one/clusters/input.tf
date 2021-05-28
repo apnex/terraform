@@ -39,7 +39,7 @@ variable "clusters" {
 			]
 			vcls	= true
 		}
-		edge	= {
+		mgmt	= {
 			storage	= "local"
 			nodes	= [
 				"esx15.lab01.one"
