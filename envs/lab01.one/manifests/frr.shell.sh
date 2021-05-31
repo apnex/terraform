@@ -1,3 +1,4 @@
 #!/bin/bash
-PODNAME=$(kubectl get pods -o json | jq -r '.items[] | select(.metadata.name | contains("frr")).metadata.name')
-kubectl exec -it ${PODNAME} -- vtysh
+KUBECONFIG="--kubeconfig=/home/admin/kube_config"
+PODNAME=$(kubectl ${KUBECONFIG} get pods -o json | jq -r '.items[] | select(.metadata.name | contains("frr")).metadata.name')
+kubectl ${KUBECONFIG} exec -it ${PODNAME} -- vtysh
