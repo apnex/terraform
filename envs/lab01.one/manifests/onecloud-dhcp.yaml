@@ -1,37 +1,49 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: control-pxe
+  name: control-dhcp
 spec:
   selector:
     matchLabels:
-      name: control-pxe-deploy
+      name: control-dhcp-deploy
   template:
     metadata:
       labels:
-        name: control-pxe-deploy
+        name: control-dhcp-deploy
     spec:
       volumes:
-        - name: pxe-conf
+        - name: dhcp-conf
           configMap:
-            defaultMode: 0644
-            name: pxe-conf-map
+            defaultMode: 0777
+            name: dhcp-conf-map
       hostNetwork: true
       containers:
-      - name: control-pxe 
-        image: apnex/control-pxe
+      - name: control-dhcp 
+        image: apnex/control-dhcp
+        command: ["/root/dhcpd-start.sh"]
         volumeMounts:
           - mountPath: /etc/dhcp/dhcpd.conf
-            name: pxe-conf
+            name: dhcp-conf
             subPath: dhcpd.conf
+          - mountPath: /root/dhcpd-start.sh
+            name: dhcp-conf
+            subPath: dhcpd-start.sh
         securityContext:
           privileged: true
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: pxe-conf-map
+  name: dhcp-conf-map
 data:
+  dhcpd-start.sh: |
+    #!/bin/sh
+    echo "Enabling syslogd..."
+    /sbin/syslogd
+    echo "Initialising dhcpd configuration..."
+    /usr/sbin/dhcpd -4 -d --no-pid
+    echo "Tailing /var/log/messages..."
+    tail -f /var/log/messages
   dhcpd.conf: |
     # global options
     include "/etc/dhcp/ipxe.options";

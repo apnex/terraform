@@ -14,7 +14,6 @@ spec:
       volumes:
         - name: ntp-conf
           configMap:
-            defaultMode: 0644
             name: ntp-conf-map
       hostNetwork: true
       containers:
