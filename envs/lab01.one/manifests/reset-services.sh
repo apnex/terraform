@@ -1,4 +1,6 @@
 #!/bin/bash
+echo "Removing stale (exited) docker containers..."
+docker rm -v $(docker ps -a -q -f status=exited)
 
 ## check / create vlan 5 interface
 INTERNALNIC="eth1"
@@ -59,6 +61,3 @@ EOF
 echo "${METALPOOL}"
 printf "${METALPOOL}" | kubectl ${KUBECONFIG} apply -f -
 kubectl ${KUBECONFIG} -n metallb-system delete pods --all
-
-echo "Removing stale (exited) docker containers..."
-docker rm -v $(docker ps -a -q -f status=exited)
