@@ -1,0 +1,43 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: projectcontour
+---
+apiVersion: operator.projectcontour.io/v1alpha1
+kind: Contour
+metadata:
+  name: contour-proxy
+  namespace: contour-operator
+spec:
+  gatewayClassRef: class-contour
+---
+kind: GatewayClass
+apiVersion: networking.x-k8s.io/v1alpha1
+metadata:
+  name: class-contour
+spec:
+  controller: projectcontour.io/contour-operator
+  parametersRef:
+    group: operator.projectcontour.io
+    kind: Contour
+    scope: Namespace
+    name: contour-proxy
+    namespace: contour-operator
+---
+kind: Gateway
+apiVersion: networking.x-k8s.io/v1alpha1
+metadata:
+  name: gw-contour
+  namespace: projectcontour
+spec:
+  gatewayClassName: class-contour
+  listeners:
+  - protocol: TLS
+    port: 443
+    tls:
+      mode: Passthrough
+    routes:
+      kind: TLSRoute
+      namespaces:
+        from: "All"

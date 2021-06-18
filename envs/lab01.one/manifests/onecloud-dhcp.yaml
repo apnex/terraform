@@ -59,32 +59,32 @@ data:
     	option broadcast-address 172.16.10.255;
     	option routers 172.16.10.1;
     	option domain-name "core.one";
-    	option domain-name-servers 10.79.0.132;
+    	option domain-name-servers 172.16.10.1;
     }
 
     # bound ips
-    host esx11 {
+    host esx11.lab {
     	option host-name "esx11.lab01.one";
-    	hardware ethernet 00:50:56:04:8f:5e;
+    	hardware ethernet 00:50:56:04:a4:9c;
     	fixed-address 172.16.10.111;
     }
-    host esx12 {
+    host esx12.lab {
     	option host-name "esx12.lab01.one";
-    	hardware ethernet 00:50:56:04:8f:61;
+    	hardware ethernet 00:50:56:04:a4:9f;
     	fixed-address 172.16.10.112;
     }
-    host esx13 {
+    host esx13.lab {
     	option host-name "esx13.lab01.one";
-    	hardware ethernet 00:50:56:04:8f:64;
+    	hardware ethernet 00:50:56:04:a4:a9;
     	fixed-address 172.16.10.113;
     }
     host esx14.lab {
     	option host-name "esx14.lab01.one";
-    	hardware ethernet 00:50:56:04:8f:67;
+    	hardware ethernet 00:50:56:04:a4:ab;
     	fixed-address 172.16.10.114;
     }
     host esx15.lab {
     	option host-name "esx15.lab01.one";
-    	hardware ethernet 00:50:56:04:8f:6a;
+    	hardware ethernet 00:50:56:04:a4:ae;
     	fixed-address 172.16.10.115;
     }
