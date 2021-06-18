@@ -4,30 +4,23 @@ locals {
 	not_dry_run	= var.vmw.not_dry_run
 	vcenter_file	= "vcenter.iso"
 	vcenter_json	= "${path.root}/vcsa.json"
-	dns_server	= data.terraform_remote_state.stage0.outputs.dns-service-ip
-	gateway		= "10.30.0.254"
-	ip		= "10.30.0.120"
+	dns_server	= var.vmw.dns_server
+	## use dns_server to resolve esx fqdn
+	gateway		= "172.16.10.1"
+	ip		= "172.16.10.110"
 	ip_prefix	= "24"
-	ntp_server	= "10.30.0.30"
-	name		= "vcenter.lab02.syd"
-	system_name	= "vcenter.lab02.syd"
+	ntp_server	= "172.16.10.1"
+	name		= "vcenter.lab01.one"
+	system_name	= "vcenter.lab01.one"
 	json		= jsonencode({
 		"__version": "2.13.0",
 		"new_vcsa": {
-			"vc": {
-				"hostname": "vcenter.core.syd",
-				"username": "administrator@vsphere.local",
+			"esxi": {
+				"hostname": "172.16.10.111",
+				"username": "root",
 				"password": "VMware1!SDDC",
-				"deployment_network": "pg-mgmt",
-				"datacenter": [
-					"core"
-				],
-				"datastore": "ds-esx01",
-				"target": [
-					"cmp",
-					"Resources",
-					local.prefix
-				]
+				"deployment_network": "vss-vmnet",
+				"datastore": "ds-esx11"
 			},
 			"appliance": {
 				"thin_disk_mode": true,
@@ -36,7 +29,7 @@ locals {
 			},
 			"network": {
 				"ip_family": "ipv4",
-					"mode": "static",
+				"mode": "static",
 				"ip": local.ip,
 				"dns_servers": [
 					local.dns_server
