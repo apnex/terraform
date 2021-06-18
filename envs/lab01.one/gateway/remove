@@ -1,0 +1,11 @@
+#!/bin/bash
+
+## remove gateway
+kubectl delete -f gateway.yaml
+
+## remove contour-operator ns
+kubectl delete -f https://projectcontour.io/quickstart/operator.yaml
+sleep 5
+
+## remove contour-operator ns
+kubectl delete ns projectcontour
