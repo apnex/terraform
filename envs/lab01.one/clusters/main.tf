@@ -174,8 +174,13 @@ resource "null_resource" "marked-disk-ssd" {
 	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
+			## 7.0 ##
 			esxcli storage hpp device set -d "${self.triggers.cache}" --mark-device-ssd=true
 			esxcli storage hpp device usermarkedssd list
+			## 6.7 ##
+			#esxcli storage nmp satp rule add -s VMW_SATP_LOCAL -d "${self.triggers.cache}" -o enable_ssd
+			#esxcli storage core claiming reclaim -d "${self.triggers.cache}"
+			#esxcli storage core device list -d "${self.triggers.cache}" | grep SSD
 		EOT
 		]
 	}
