@@ -4,6 +4,13 @@ docker rm -v $(docker ps -a -q -f status=exited)
 
 ## check / create vlan 5 interface
 INTERNALNIC="eth1"
+if ! RESULT=$(nmcli connection show id ${INTERNALNIC}) ; then
+	nmcli connection modify ${INTERNALNIC} \
+		ipv4.method manual \
+		ipv4.addresses 172.16.10.1/24 \
+		ipv4.never-default yes
+	nmcli connection up ${INTERNALNIC}
+fi
 if ! RESULT=$(nmcli connection show id eth1.5) ; then
 	nmcli connection add type vlan con-name ${INTERNALNIC}.5 dev ${INTERNALNIC} id 5
 	nmcli connection modify ${INTERNALNIC}.5 \
