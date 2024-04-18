@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: control-minio
+spec:
+  selector:
+    matchLabels:
+      name: control-minio-set
+  template:
+    metadata:
+      labels:
+        name: control-minio-set
+    spec:
+      volumes:
+        - name: minio-storage
+          hostPath:
+            path: /home/minio/buckets
+            type: DirectoryOrCreate
+      hostNetwork: true
+      containers:
+      - name: control-minio
+        image: minio/minio
+        volumeMounts:
+          - mountPath: /buckets
+            name: minio-storage
+        args: ["server", "/buckets"]

@@ -1,0 +1,36 @@
+#!/bin/bash
+
+#https://projectcontour.io/guides/gateway-api/
+kubectl apply -f https://projectcontour.io/quickstart/operator.yaml
+
+## setup namespace
+kubectl create ns projectcontour
+
+## setup gateway
+kubectl apply -f ./gateway.yaml
+
+## updated envoy service object for metallb
+read -r -d '' SPEC <<EOF
+apiVersion: v1
+kind: Service
+metadata:
+  name: envoy
+  namespace: projectcontour
+  annotations:
+    metallb.universe.tf/allow-shared-ip: host
+spec:
+  externalTrafficPolicy: Cluster
+  ports:
+  - port: 80
+    name: http
+    protocol: TCP
+    targetPort: 8080
+  - port: 443
+    name: https
+    protocol: TCP
+    targetPort: 8443
+  selector:
+    app: envoy
+  type: LoadBalancer
+EOF
+printf "${SPEC}" | kubectl apply -f -

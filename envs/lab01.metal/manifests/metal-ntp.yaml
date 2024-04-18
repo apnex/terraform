@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-ntp
+spec:
+  selector:
+    matchLabels:
+      name: control-ntp-deploy
+  template:
+    metadata:
+      labels:
+        name: control-ntp-deploy
+    spec:
+      volumes:
+        - name: ntp-conf
+          configMap:
+            name: ntp-conf-map
+      hostNetwork: true
+      containers:
+      - name: control-ntp
+        image: apnex/control-ntp
+        volumeMounts:
+          - mountPath: /etc/ntp.conf
+            name: ntp-conf
+            subPath: ntp.conf
+        securityContext:
+          capabilities:
+            add: ["SYS_NICE","SYS_RESOURCE","SYS_TIME"]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntp-conf-map
+data:
+  ntp.conf: |
+    restrict default
+    server time.google.com iburst
+    # LOCL server settings
+    server 127.127.1.0
+    fudge 127.127.1.0 stratum 10

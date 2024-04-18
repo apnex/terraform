@@ -1,8 +1,8 @@
 locals {
 	prefix			= var.prefix
 	vcenter_url		= var.vcenter_url
-	vcenter_file		= "${path.root}/${local.prefix}-${var.vcenter_file}"
-	vcenter_json		= "${path.root}/${var.vcenter_json}"
+	vcenter_file		= "${abspath(path.root)}/${local.prefix}-${var.vcenter_file}"
+	vcenter_json		= "${abspath(path.root)}/${var.vcenter_json}"
 	not_dry_run		= var.not_dry_run
 }
 

@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: control-frr
+spec:
+  selector:
+    matchLabels:
+      name: control-frr-set
+  template:
+    metadata:
+      labels:
+        name: control-frr-set
+    spec:
+      volumes:
+        - name: frr-storage
+          hostPath:
+            path: /var/frr
+            type: DirectoryOrCreate
+        - name: frr-init
+          configMap:
+            defaultMode: 0755
+            name: frr-init-map
+        - name: frr-conf
+          configMap:
+            defaultMode: 0644
+            name: frr-conf-map
+      hostNetwork: true
+      containers:
+      - name: control-frr 
+        image: apnex/router
+        #image: frrouting/frr
+        volumeMounts:
+          - mountPath: /etc/frr
+            name: frr-storage
+          - mountPath: /bin/frr-start.sh
+            name: frr-init
+            subPath: frr-start.sh
+          - mountPath: /etc/frr/daemons
+            name: frr-conf
+            subPath: daemons
+          - mountPath: /daemons
+            name: frr-conf
+            subPath: daemons
+        command: ["/bin/frr-start.sh"]
+        securityContext:
+          privileged: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frr-init-map
+data:
+  frr-start.sh: |
+    #!/bin/sh
+    echo "Initialising FRR configuration..."
+    mkdir -p /etc/frr
+    ls -la /etc
+    cat /etc/frr
+    echo "Initialising FRR configuration..."
+    if [ ! -f /etc/frr/frr.conf ]; then
+    	echo "[INFO] frr.conf missing - creating file...."
+    	cat <<- EOF >/etc/frr/frr.conf
+    		frr defaults traditional
+    		!
+    		line vty
+    		!
+    	EOF
+    fi
+    if [ ! -f /etc/frr/vtysh.conf ]; then
+    	echo "[INFO] vtysh.conf missing - creating file...."
+    	cat <<- EOF >/etc/frr/vtysh.conf
+    		!
+    	EOF
+    fi
+    echo "Starting FRR on node... "
+    exec /sbin/tini -- /usr/lib/frr/docker-start
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: frr-conf-map
+data:
+  daemons: |
+    zebra=yes
+    bgpd=yes
+    ospfd=no
+    ospf6d=no
+    ripd=no
+    ripngd=no
+    isisd=no
+    pimd=no
+    ldpd=no
+    nhrpd=no
+    eigrpd=no
+    babeld=no
+    sharpd=no
+    pbrd=no
+    bfdd=no
+    fabricd=no
+    vrrpd=no
+    vtysh_enable=yes
+    zebra_options="  -A 127.0.0.1 -s 90000000"
+    bgpd_options="   -A 127.0.0.1"
+    ospfd_options="  -A 127.0.0.1"
+    ospf6d_options=" -A ::1"
+    ripd_options="   -A 127.0.0.1"
+    ripngd_options=" -A ::1"
+    isisd_options="  -A 127.0.0.1"
+    pimd_options="   -A 127.0.0.1"
+    ldpd_options="   -A 127.0.0.1"
+    nhrpd_options="  -A 127.0.0.1"
+    eigrpd_options=" -A 127.0.0.1"
+    babeld_options=" -A 127.0.0.1"
+    sharpd_options=" -A 127.0.0.1"
+    pbrd_options="   -A 127.0.0.1"
+    staticd_options="-A 127.0.0.1"
+    bfdd_options="   -A 127.0.0.1"
+    fabricd_options="-A 127.0.0.1"
+    vrrpd_options="  -A 127.0.0.1"

@@ -1,0 +1,172 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: control-dns
+  labels:
+    app: control-dns
+spec:
+  hostNetwork: true
+  volumes:
+    - name: dns-conf
+      configMap:
+        defaultMode: 0777
+        name: map-dns-conf
+    - name: dns-start
+      configMap:
+        defaultMode: 0777
+        name: map-dns-start
+  containers:
+  - name: control-dns
+    image: apnex/terraform-dns
+    volumeMounts:
+      - mountPath: /etc/bind/named.conf
+        name: dns-conf
+        subPath: named.conf
+      - mountPath: /var/bind/named.conf.local
+        name: dns-conf
+        subPath: named.conf.local
+      - mountPath: /bin/dns-start.sh
+        name: dns-start
+        subPath: dns-start.sh
+    command: ["/bin/dns-start.sh"]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: map-dns-start
+data:
+  dns-start.sh: |
+    #!/bin/sh
+    echo "Initialising DNS configuration..."
+    if [ ! -f /var/bind/lab01.one.zone.fwd ]; then
+    	echo "[INFO] fwd zone file missing - creating file...."
+    cat <<'EOF' >/var/bind/lab01.one.zone.fwd
+    $TTL 86400		; 1 day
+    @	IN	SOA ns1.lab01.one. mail.lab01.one. (
+    		100	; serial
+    		3600	; refresh
+    		1800	; retry
+    		604800	; expire
+    		86400	; minimum
+    	)
+    		IN	NS	ns1.lab01.one.
+    ns1		IN	A	127.0.0.1
+    lb          IN      NS      ns1.lb.lab01.one.
+    ns1.lb.lab01.one.	IN	A	172.16.10.120
+    vcenter	IN	A	172.16.10.110
+    esx11	IN	A	172.16.10.111
+    esx12	IN	A	172.16.10.112
+    esx13	IN	A	172.16.10.113
+    esx14	IN	A	172.16.10.114
+    esx15	IN	A	172.16.10.115
+    nsxm	IN	A	172.16.10.117
+    edge01	IN	A	172.16.10.118
+    avic	IN	A	172.16.10.119
+    EOF
+    fi
+    if [ ! -f /var/bind/lab01.one.zone.rev ]; then
+    	echo "[INFO] rev zone file missing - creating file...."
+    cat <<'EOF' >/var/bind/lab01.one.zone.rev
+    $TTL 86400
+    @	IN	SOA	ns1.lab01.one. mail.lab01.one. (
+    		110	; serial
+    		3600	; refresh
+    		1800	; retry
+    		604800	; expire
+    		86400	; minimum
+    	)
+    		IN	NS	ns1.lab01.one.
+    ns1		IN	A	127.0.0.1
+    110		IN	PTR     vcenter.lab01.one.
+    111		IN	PTR     esx11.lab01.one.
+    112		IN	PTR     esx12.lab01.one.
+    113		IN	PTR     esx13.lab01.one.
+    114		IN	PTR     esx14.lab01.one.
+    115		IN	PTR     esx15.lab01.one.
+    117		IN	PTR     nsxm.lab01.one.
+    118		IN	PTR     edge01.lab01.one.
+    119		IN	PTR     avic.lab01.one.
+    120		IN	PTR     ns1.lb.lab01.one.
+    EOF
+    fi
+    chmod 777 /var/bind/lab01.one.zone.fwd
+    chmod 777 /var/bind/lab01.one.zone.rev
+    cat /var/bind/lab01.one.zone.fwd
+    cat /var/bind/lab01.one.zone.rev
+    echo "Starting BIND on node... "
+    sleep 5
+    /usr/sbin/named && tail -f /var/log/named.log
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: map-dns-conf
+data:
+  named.conf: |
+    options {
+    	directory "/var/bind";
+    	allow-query	{ 0.0.0.0/0; };
+    	allow-transfer	{ 0.0.0.0/0; };
+    	allow-update	{ 0.0.0.0/0; };
+    	allow-recursion { 0.0.0.0/0; };
+    	allow-new-zones yes;
+    	recursion yes;
+    	forwarders {
+    		10.79.0.132;
+    		10.79.0.133;
+    	};
+    	dnssec-enable yes;
+    	dnssec-validation yes;
+    };
+    include "/var/bind/named.conf.local";
+  named.conf.local: |
+    logging {
+    	channel "default_syslog" {
+    		file "/var/log/named.log" versions 3 size 5m;
+    		print-time yes;
+    		print-category yes;
+    		print-severity yes;
+    		severity debug;
+    	};
+    	channel "black" {
+    		file "/var/log/named.black" versions 3 size 5m;
+    		print-time yes;
+    		print-category yes;
+    		print-severity yes;
+    		severity debug;
+    	};
+    	category default { default_syslog; };
+    	category general { black; };
+    	category config { default_syslog; };
+    	category security { default_syslog; };
+    	category resolver { default_syslog; };
+    	category xfer-in { default_syslog; };
+    	category xfer-out { default_syslog; };
+    	category notify { default_syslog; };
+    	category client { default_syslog; };
+    	category network { default_syslog; };
+    	category update { default_syslog; };
+    	category queries { default_syslog; };
+    	category lame-servers { default_syslog; };
+    };
+    controls {   
+    	inet * port 953
+    	allow { 0.0.0.0/0; } 
+    	keys { dnsctl; };
+    };
+    key "dnsctl" {   
+    	algorithm hmac-md5;   
+    	# echo -n 'VMware1!' | base64
+    	secret "Vk13YXJlMSE=";
+    };
+    zone "lab01.one" {
+    	type master;
+    	file "/var/bind/lab01.one.zone.fwd";
+    	forwarders {};
+    };
+    zone "0.30.10.in-addr.arpa" {
+    	type master;
+    	file "/var/bind/lab01.one.zone.rev";
+    	forwarders {};
+    };

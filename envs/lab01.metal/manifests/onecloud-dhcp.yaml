@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-dhcp
+spec:
+  selector:
+    matchLabels:
+      name: control-dhcp-deploy
+  template:
+    metadata:
+      labels:
+        name: control-dhcp-deploy
+    spec:
+      volumes:
+        - name: dhcp-conf
+          configMap:
+            defaultMode: 0777
+            name: dhcp-conf-map
+      hostNetwork: true
+      containers:
+      - name: control-dhcp 
+        image: apnex/control-dhcp
+        command: ["/root/dhcpd-start.sh"]
+        volumeMounts:
+          - mountPath: /etc/dhcp/dhcpd.conf
+            name: dhcp-conf
+            subPath: dhcpd.conf
+          - mountPath: /root/dhcpd-start.sh
+            name: dhcp-conf
+            subPath: dhcpd-start.sh
+        securityContext:
+          privileged: true
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dhcp-conf-map
+data:
+  dhcpd-start.sh: |
+    #!/bin/sh
+    echo "Enabling syslogd..."
+    /sbin/syslogd
+    echo "Initialising dhcpd configuration..."
+    /usr/sbin/dhcpd -4 -d --no-pid
+    echo "Tailing /var/log/messages..."
+    tail -f /var/log/messages
+  dhcpd.conf: |
+    # global options
+    include "/etc/dhcp/ipxe.options";
+    default-lease-time 600;
+    max-lease-time 7200;
+    authoritative;
+
+    # mgmt subnet
+    subnet 172.16.10.0 netmask 255.255.255.0 {
+    	range 172.16.10.50 172.16.10.99;
+    	next-server 172.16.10.1;
+    	option subnet-mask 255.255.255.0;
+    	option broadcast-address 172.16.10.255;
+    	option routers 172.16.10.1;
+    	option domain-name "core.one";
+    	option domain-name-servers 172.16.10.1;
+    }
+
+    # bound ips
+    host esx11.lab {
+    	option host-name "esx11.lab01.one";
+    	hardware ethernet 00:50:56:04:a4:9c;
+    	fixed-address 172.16.10.111;
+    }
+    host esx12.lab {
+    	option host-name "esx12.lab01.one";
+    	hardware ethernet 00:50:56:04:a4:9f;
+    	fixed-address 172.16.10.112;
+    }
+    host esx13.lab {
+    	option host-name "esx13.lab01.one";
+    	hardware ethernet 00:50:56:04:a4:a9;
+    	fixed-address 172.16.10.113;
+    }
+    host esx14.lab {
+    	option host-name "esx14.lab01.one";
+    	hardware ethernet 00:50:56:04:a4:ab;
+    	fixed-address 172.16.10.114;
+    }
+    host esx15.lab {
+    	option host-name "esx15.lab01.one";
+    	hardware ethernet 00:50:56:04:a4:ae;
+    	fixed-address 172.16.10.115;
+    }
