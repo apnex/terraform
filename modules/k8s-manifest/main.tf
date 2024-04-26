@@ -19,7 +19,7 @@ resource "null_resource" "applied_manifest" {
 		host		= self.triggers.master_ip
 		type		= "ssh"
 		user		= "root"
-		private_key     = file(self.triggers.master_ssh_key)
+		private_key     = self.triggers.master_ssh_key
 	}
 	provisioner "file" {
 		source      = self.triggers.manifest_src
@@ -50,7 +50,7 @@ resource "null_resource" "healthcheck_pod_ready" {
 		host		= self.triggers.master_ip
 		type		= "ssh"
 		user		= "root"
-		private_key     = file(self.triggers.master_ssh_key)
+		private_key     = self.triggers.master_ssh_key
 	}
 	provisioner "remote-exec" {
 		inline	= [<<-EOT
