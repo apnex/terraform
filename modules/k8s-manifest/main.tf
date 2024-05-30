@@ -13,7 +13,7 @@ resource "null_resource" "applied_manifest" {
 		master_ip	= var.master_ip
 		master_ssh_key	= var.master_ssh_key
 		manifest_src	= "${path.root}/state/${var.manifest}"
-		manifest_dst	= "/root/${var.manifest}"
+		manifest_dst	= "/root/manifests/${var.manifest}"
 	}
 	connection {
 		host		= self.triggers.master_ip
